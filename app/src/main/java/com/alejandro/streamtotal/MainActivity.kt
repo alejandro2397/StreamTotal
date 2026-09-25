@@ -193,20 +193,8 @@ private fun RtmpStudio() {
                             return@Button
                         }
 
-                        val videoReady = camera.prepareVideo(
-                            1280,
-                            720,
-                            30,
-                            2_000_000,
-                            2
-                        )
-                        val audioReady = camera.prepareAudio(
-                            128_000,
-                            44_100,
-                            true,
-                            false,
-                            false
-                        )
+                        val videoReady = camera.prepareVideo()
+                        val audioReady = camera.prepareAudio()
 
                         if (videoReady && audioReady) {
                             status = "Conectando..."
