@@ -3,13 +3,10 @@ package com.alejandro.streamtotal
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.SurfaceHolder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,14 +18,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
+import com.pedro.common.ConnectChecker
+import com.pedro.library.rtmp.RtmpCamera2
+import com.pedro.library.view.OpenGlView
 
 class MainActivity : ComponentActivity() {
     private var permissionsGranted by mutableStateOf(false)
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             permissionsGranted = hasPermissions()
         }
+
     private fun hasPermissions() =
         checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
         checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -36,11 +37,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         permissionsGranted = hasPermissions()
+
         setContent {
             StreamTotalTheme {
-                if (permissionsGranted) CameraStudio()
+                if (permissionsGranted) RtmpStudio()
                 else PermissionScreen {
-                    permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
+                    permissionLauncher.launch(
+                        arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+                    )
                 }
             }
         }
@@ -66,74 +70,172 @@ private fun PermissionScreen(onRequest: () -> Unit) {
 }
 
 @Composable
-private fun CameraStudio() {
+private fun RtmpStudio() {
     val context = LocalContext.current
-    var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
-    var microphoneEnabled by remember { mutableStateOf(true) }
+    var rtmpUrl by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("Vista previa lista") }
+    var isStreaming by remember { mutableStateOf(false) }
+    var rtmpCamera by remember { mutableStateOf<RtmpCamera2?>(null) }
+
+    val checker = remember {
+        object : ConnectChecker {
+            override fun onConnectionStarted(url: String) {
+                status = "Conectando..."
+            }
+
+            override fun onConnectionSuccess() {
+                status = "🔴 EN VIVO"
+                isStreaming = true
+            }
+
+            override fun onConnectionFailed(reason: String) {
+                status = "Error de conexión"
+                isStreaming = false
+            }
+
+            override fun onNewBitrate(bitrate: Long) {
+                if (isStreaming) status = "🔴 EN VIVO · ${bitrate / 1000} kbps"
+            }
+
+            override fun onDisconnect() {
+                status = "Desconectado"
+                isStreaming = false
+            }
+
+            override fun onAuthError() {
+                status = "Error de autenticación"
+                isStreaming = false
+            }
+
+            override fun onAuthSuccess() {
+                status = "Autenticación correcta"
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            rtmpCamera?.let {
+                if (it.isStreaming) it.stopStream()
+                it.stopPreview()
+            }
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(Color(0xFFF7F7FA))) {
         Box(
-            Modifier.fillMaxWidth().height(430.dp)
+            Modifier.fillMaxWidth().height(400.dp)
                 .background(Color.Black, RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
         ) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
-                factory = { ctx -> PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER } },
-                update = { view -> bindCamera(view, context, lensFacing) }
+                factory = { ctx ->
+                    OpenGlView(ctx).also { view ->
+                        val camera = RtmpCamera2(view, checker)
+                        rtmpCamera = camera
+                        view.holder.addCallback(object : SurfaceHolder.Callback {
+                            override fun surfaceCreated(holder: SurfaceHolder) {
+                                camera.startPreview()
+                            }
+
+                            override fun surfaceChanged(
+                                holder: SurfaceHolder,
+                                format: Int,
+                                width: Int,
+                                height: Int
+                            ) = Unit
+
+                            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                if (camera.isStreaming) camera.stopStream()
+                                camera.stopPreview()
+                            }
+                        })
+                    }
+                }
             )
-            Row(
-                Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("StreamTotal", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                Text(if (microphoneEnabled) "🎙️ Mic ON" else "🔇 Mic OFF", color = Color.White)
-            }
+
+            Text(
+                text = status,
+                color = Color.White,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+            )
         }
 
-        Column(Modifier.fillMaxSize().padding(18.dp)) {
-            Text("Estudio de transmisión", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxSize().padding(16.dp)) {
+            Text("Transmisión RTMP", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = rtmpUrl,
+                onValueChange = { rtmpUrl = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("URL RTMP + Stream Key") },
+                placeholder = { Text("rtmps://...") },
+                enabled = !isStreaming
+            )
+
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Ejemplo: rtmps://servidor/live/tu_clave",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            if (!isStreaming) {
                 Button(
                     onClick = {
-                        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
-                            CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-                    },
-                    modifier = Modifier.weight(1f)
-                ) { Text("🔄 Cámara") }
+                        val camera = rtmpCamera ?: return@Button
+                        val url = rtmpUrl.trim()
+                        if (url.isEmpty()) {
+                            status = "Introduce una URL RTMP"
+                            return@Button
+                        }
 
+                        val videoReady = camera.prepareVideo(
+                            1280,
+                            720,
+                            30,
+                            2_000_000,
+                            2
+                        )
+                        val audioReady = camera.prepareAudio(
+                            128_000,
+                            44_100,
+                            true,
+                            false,
+                            false
+                        )
+
+                        if (videoReady && audioReady) {
+                            status = "Conectando..."
+                            camera.startStream(url)
+                        } else {
+                            status = "Este dispositivo no pudo preparar el encoder"
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C4DFF))
+                ) {
+                    Text("🔴 INICIAR TRANSMISIÓN")
+                }
+            } else {
                 Button(
-                    onClick = { microphoneEnabled = !microphoneEnabled },
-                    modifier = Modifier.weight(1f)
-                ) { Text(if (microphoneEnabled) "🎙️ Mic" else "🔇 Mic") }
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("Calidad: 720p")
-            Text("RTMP: próximo paso", color = Color.Gray)
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = { },
-                modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C4DFF))
-            ) {
-                Text("🔴 INICIAR TRANSMISIÓN")
+                    onClick = {
+                        rtmpCamera?.stopStream()
+                        status = "Transmisión detenida"
+                        isStreaming = false
+                    },
+                    modifier = Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text("⏹ DETENER TRANSMISIÓN")
+                }
             }
         }
     }
-}
-
-private fun bindCamera(previewView: PreviewView, context: android.content.Context, lensFacing: Int) {
-    val future = ProcessCameraProvider.getInstance(context)
-    future.addListener({
-        val provider = future.get()
-        val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
-        val selector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
-        try {
-            provider.unbindAll()
-            provider.bindToLifecycle(context as ComponentActivity, selector, preview)
-        } catch (_: Exception) { }
-    }, ContextCompat.getMainExecutor(context))
 }
 
 @Composable
