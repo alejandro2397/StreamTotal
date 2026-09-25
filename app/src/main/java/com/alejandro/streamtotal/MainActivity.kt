@@ -11,25 +11,10 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -73,17 +58,18 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Text("Permite cámara y micrófono para preparar tu transmisión.")
         Spacer(Modifier.height(20.dp))
-        Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C4DFF))) {
-            Text("PERMITIR ACCESO")
-        }
+        Button(
+            onClick = onRequest,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C4DFF))
+        ) { Text("PERMITIR ACCESO") }
     }
 }
 
 @Composable
 private fun CameraStudio() {
     val context = LocalContext.current
-    var lensFacing by mutableStateOf(CameraSelector.LENS_FACING_BACK)
-    var microphoneEnabled by mutableStateOf(true)
+    var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
+    var microphoneEnabled by remember { mutableStateOf(true) }
 
     Column(Modifier.fillMaxSize().background(Color(0xFFF7F7FA))) {
         Box(
@@ -108,24 +94,31 @@ private fun CameraStudio() {
             Text("Estudio de transmisión", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(Modifier.weight(1f), onClick = {
-                    lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
-                        CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-                }) { Text("🔄 Cámara") }
-                Button(Modifier.weight(1f), onClick = { microphoneEnabled = !microphoneEnabled }) {
-                    Text(if (microphoneEnabled) "🎙️ Mic" else "🔇 Mic")
-                }
+                Button(
+                    onClick = {
+                        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+                            CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+                    },
+                    modifier = Modifier.weight(1f)
+                ) { Text("🔄 Cámara") }
+
+                Button(
+                    onClick = { microphoneEnabled = !microphoneEnabled },
+                    modifier = Modifier.weight(1f)
+                ) { Text(if (microphoneEnabled) "🎙️ Mic" else "🔇 Mic") }
             }
             Spacer(Modifier.height(14.dp))
             Text("Calidad: 720p")
             Text("RTMP: próximo paso", color = Color.Gray)
             Spacer(Modifier.weight(1f))
             Button(
-                Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp),
                 onClick = { },
+                modifier = Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C4DFF))
-            ) { Text("🔴 INICIAR TRANSMISIÓN") }
+            ) {
+                Text("🔴 INICIAR TRANSMISIÓN")
+            }
         }
     }
 }
