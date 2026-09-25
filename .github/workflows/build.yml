@@ -26,23 +26,24 @@ jobs:
       - name: Build APK and AAB
         run: gradle assembleRelease bundleRelease --stacktrace
 
-      - name: Verify release outputs
+      - name: List generated release files
+        if: always()
         run: |
-          test -f app/build/outputs/apk/release/app-release.apk
-          test -f app/build/outputs/bundle/release/app-release.aab
-          ls -lh app/build/outputs/apk/release/app-release.apk
-          ls -lh app/build/outputs/bundle/release/app-release.aab
+          echo "=== APK ==="
+          find app/build/outputs/apk -type f -maxdepth 5 -print 2>/dev/null || true
+          echo "=== AAB ==="
+          find app/build/outputs/bundle -type f -maxdepth 5 -print 2>/dev/null || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: StreamTotal-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
           name: StreamTotal-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
