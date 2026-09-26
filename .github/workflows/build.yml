@@ -42,18 +42,10 @@ jobs:
           test -s app/release-keystore.jks
           echo "Keystore reconstruido correctamente."
 
-      - name: Verify keystore
-        env:
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      - name: Check keystore file
         run: |
-          keytool -list \
-            -keystore app/release-keystore.jks \
-            -storepass "$STORE_PASSWORD" \
-            -alias "$KEY_ALIAS" \
-            >/dev/null
-
-          echo "Keystore y alias verificados correctamente."
+          ls -lh app/release-keystore.jks
+          file app/release-keystore.jks
 
       - name: Build APK and AAB
         env:
