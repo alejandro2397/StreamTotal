@@ -52,13 +52,18 @@ jobs:
         run: |
           set -euo pipefail
 
+          echo "Validando keystore de StreamTotal..."
+          keytool -list \
+            -keystore "$RELEASE_KEYSTORE_PATH" \
+            -storepass "$STORE_PASSWORD"
+
+          echo "Buscando el alias configurado..."
           keytool -list \
             -keystore "$RELEASE_KEYSTORE_PATH" \
             -storepass "$STORE_PASSWORD" \
-            -alias "$KEY_ALIAS" \
-            >/dev/null
+            -alias "$KEY_ALIAS"
 
-          echo "Keystore y alias verificados correctamente."
+          echo "Keystore, contraseña y alias verificados correctamente."
 
       - name: Build APK and AAB
         env:
