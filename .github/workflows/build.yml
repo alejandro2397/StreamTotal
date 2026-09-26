@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,29 +32,51 @@ jobs:
             echo "::error::RELEASE_KEYSTORE_BASE64 está vacío o no existe en GitHub Secrets."
             exit 1
           fi
-          printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '\r\n\t ' | base64 --decode > release-keystore.jks
-          test -s release-keystore.jks
+
+          mkdir -p app
+
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" \
+            | tr -d '\r\n\t ' \
+            | base64 --decode > app/release-keystore.jks
+
+          test -s app/release-keystore.jks
           echo "Keystore reconstruido correctamente."
+
+      - name: Verify keystore
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          keytool -list \
+            -keystore app/release-keystore.jks \
+            -storepass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            >/dev/null
+
+          echo "Keystore y alias verificados correctamente."
 
       - name: Build APK and AAB
         env:
-          RELEASE_KEYSTORE_PATH: release-keystore.jks
+          RELEASE_KEYSTORE_PATH: app/release-keystore.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle assembleRelease bundleRelease --stacktrace
+        run: |
+          gradle assembleRelease bundleRelease --stacktrace
 
       - name: Verify APK signature
-        env:
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/*.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
+            --verbose \
+            --print-certs \
+            app/build/outputs/apk/release/*.apk
 
       - name: List generated release files
         if: always()
         run: |
           echo "=== APK ==="
           find app/build/outputs/apk -type f -maxdepth 5 -print 2>/dev/null || true
+
           echo "=== AAB ==="
           find app/build/outputs/bundle -type f -maxdepth 5 -print 2>/dev/null || true
 
