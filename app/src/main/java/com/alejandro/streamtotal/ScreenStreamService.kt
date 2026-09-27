@@ -24,6 +24,7 @@ class ScreenStreamService : Service(), ConnectChecker {
         const val EXTRA_DATA = "projection_data"
         const val EXTRA_URL = "rtmp_url"
         const val EXTRA_INTERNAL_AUDIO = "internal_audio"
+        const val EXTRA_QUALITY = "quality"
         const val CHANNEL_ID = "streamtotal_gaming"
         const val NOTIFICATION_ID = 4107
     }
@@ -49,6 +50,7 @@ class ScreenStreamService : Service(), ConnectChecker {
             intent.getParcelableExtra(EXTRA_DATA)
         }
         val url = intent.getStringExtra(EXTRA_URL).orEmpty()
+        val quality = intent.getStringExtra(EXTRA_QUALITY) ?: "720p"
         if (resultCode == -1 || data == null || url.isBlank()) {
             stopWithMessage("Falta autorización o destino RTMP")
             return
@@ -71,7 +73,12 @@ class ScreenStreamService : Service(), ConnectChecker {
                 getGlInterface().setForceRender(true, 30)
                 getGlInterface().setCameraOrientation(0)
             }
-            val prepared = stream!!.prepareVideo(1280, 720, 30, 3_500_000) &&
+            val video = when (quality) {
+                "480p" -> intArrayOf(854, 480, 2_000_000)
+                "1080p" -> intArrayOf(1920, 1080, 5_500_000)
+                else -> intArrayOf(1280, 720, 3_500_000)
+            }
+            val prepared = stream!!.prepareVideo(video[0], video[1], 30, video[2]) &&
                 stream!!.prepareAudio(44_100, true, 128_000, false, true)
             if (!prepared) { stopWithMessage("No se pudo preparar 720p/30"); return }
             stream!!.changeVideoSource(screen)
