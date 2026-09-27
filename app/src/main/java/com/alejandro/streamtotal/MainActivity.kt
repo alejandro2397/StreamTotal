@@ -91,6 +91,17 @@ private val presets = listOf(
     QualityPreset("1080p", 1920, 1080, 5_000_000)
 )
 
+private data class SocialPreset(val name: String, val server: String, val hint: String)
+
+private val socialPresets = listOf(
+    SocialPreset("YouTube", "rtmp://a.rtmp.youtube.com/live2/", "Clave de emisión de YouTube"),
+    SocialPreset("Facebook", "rtmps://live-api-s.facebook.com:443/rtmp/", "Clave de transmisión de Facebook"),
+    SocialPreset("Twitch", "rtmp://live.twitch.tv/app/", "Clave de transmisión de Twitch"),
+    SocialPreset("TikTok", "", "Servidor y clave proporcionados por TikTok"),
+    SocialPreset("Kick", "", "Servidor y clave de transmisión de Kick"),
+    SocialPreset("Personalizado", "", "Servidor RTMP + clave")
+)
+
 @Composable
 private fun StudioScreen() {
     val context = LocalContext.current
@@ -101,6 +112,8 @@ private fun StudioScreen() {
     var title by remember { mutableStateOf(prefs.getString("title", "Mi transmisión") ?: "Mi transmisión") }
     var quality by remember { mutableStateOf(prefs.getString("quality", "720p") ?: "720p") }
     var tab by remember { mutableStateOf("EN VIVO") }
+    var socialSlot by remember { mutableIntStateOf(1) }
+    var socialNetwork by remember { mutableStateOf(prefs.getString("socialNetwork1", "YouTube") ?: "YouTube") }
     var status by remember { mutableStateOf("Listo para transmitir") }
     var isStreaming by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
@@ -238,7 +251,7 @@ private fun StudioScreen() {
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("EN VIVO", "🎮 GAMING", "ESCENAS", "AJUSTES").forEach { item ->
+            listOf("EN VIVO", "🌐 REDES", "🎮 GAMING", "ESCENAS", "AJUSTES").forEach { item ->
                 FilterChip(tab == item, { tab = item }, label = { Text(item) })
             }
         }
@@ -302,6 +315,33 @@ private fun StudioScreen() {
                     }
                 }
             )
+            "🌐 REDES" -> SocialNetworksPanel(
+                destination1 = destination1,
+                destination2 = destination2,
+                socialSlot = socialSlot,
+                selectedNetwork = socialNetwork,
+                onSlot = { socialSlot = it },
+                onNetwork = { network ->
+                    socialNetwork = network
+                    prefs.edit().putString("socialNetwork$socialSlot", network).apply()
+                    val preset = socialPresets.first { it.name == network }
+                    if (socialSlot == 1) destination1 = preset.server else destination2 = preset.server
+                },
+                onServer = { value ->
+                    if (socialSlot == 1) destination1 = value else destination2 = value
+                    saveSettings()
+                },
+                onKey = { value ->
+                    val server = if (socialSlot == 1) destination1 else destination2
+                    val full = if (value.isBlank()) server else if (server.endsWith("/")) server + value.trim() else "$server/\${value.trim()}"
+                    if (socialSlot == 1) destination1 = full else destination2 = full
+                    prefs.edit().putString("streamKey$socialSlot", value).apply()
+                },
+                onApply = {
+                    saveSettings()
+                    tab = "EN VIVO"
+                }
+            )
             "🎮 GAMING" -> GamingPanel(
                 url = gamingUrl,
                 onUrl = { gamingUrl = it; prefs.edit().putString("gamingUrl", it).apply() },
@@ -335,6 +375,72 @@ private fun SurfaceOverlay(title: String, status: String, bitrate: String, modif
             Text(status, color = Color.White, modifier = Modifier.padding(12.dp, 6.dp))
         }
         if (bitrate != "—") Text(bitrate, color = Color.White, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+
+@Composable
+private fun SocialNetworksPanel(
+    destination1: String,
+    destination2: String,
+    socialSlot: Int,
+    selectedNetwork: String,
+    onSlot: (Int) -> Unit,
+    onNetwork: (String) -> Unit,
+    onServer: (String) -> Unit,
+    onKey: (String) -> Unit,
+    onApply: () -> Unit
+) {
+    val currentUrl = if (socialSlot == 1) destination1 else destination2
+    val preset = socialPresets.firstOrNull { it.name == selectedNetwork } ?: socialPresets.last()
+    var streamKey by remember(selectedNetwork, socialSlot) { mutableStateOf("") }
+
+    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+        Text("Redes sociales", style = MaterialTheme.typography.titleLarge)
+        Text("Configura hasta 2 destinos RTMP y transmite a dos plataformas a la vez.", color = Color.Gray)
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(socialSlot == 1, { onSlot(1) }, label = { Text("Destino 1") })
+            FilterChip(socialSlot == 2, { onSlot(2) }, label = { Text("Destino 2") })
+        }
+        Spacer(Modifier.height(12.dp))
+        Text("Plataforma", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            socialPresets.forEach { item ->
+                FilterChip(selectedNetwork == item.name, { onNetwork(item.name) }, label = { Text(item.name) })
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(preset.hint, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = currentUrl,
+            onValueChange = onServer,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Servidor RTMP") }
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = streamKey,
+            onValueChange = { streamKey = it; onKey(it) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Clave de transmisión") }
+        )
+        Spacer(Modifier.height(12.dp))
+        Surface(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp), color = Color(0xFFEDE9F4)) {
+            Column(Modifier.padding(14.dp)) {
+                Text("🔒 Seguridad", style = MaterialTheme.typography.titleMedium)
+                Text("La clave se guarda localmente en el teléfono y no se muestra en pantalla.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onApply, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
+            Text("✓ GUARDAR DESTINO")
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("StreamTotal usa RTMP/RTMPS. Cada plataforma debe proporcionarte su servidor y clave.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
     }
 }
 
