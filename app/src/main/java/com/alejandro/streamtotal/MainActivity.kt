@@ -132,6 +132,8 @@ private fun StudioScreen() {
     var gamingScene by remember { mutableStateOf("Gameplay") }
     var gamingQuality by remember { mutableStateOf(prefs.getString("gamingQuality", "720p") ?: "720p") }
     var gamingAudio by remember { mutableStateOf(prefs.getBoolean("gamingAudio", true)) }
+    var gamingMic by remember { mutableStateOf(prefs.getBoolean("gamingMic", true)) }
+    var gamingLowLatency by remember { mutableStateOf(prefs.getBoolean("gamingLowLatency", true)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -400,6 +402,10 @@ private fun StudioScreen() {
                 audioEnabled = gamingAudio,
                 onQuality = { gamingQuality = it; prefs.edit().putString("gamingQuality", it).apply() },
                 onAudio = { gamingAudio = it; prefs.edit().putBoolean("gamingAudio", it).apply() },
+                micEnabled = gamingMic,
+                onMic = { gamingMic = it; prefs.edit().putBoolean("gamingMic", it).apply() },
+                lowLatency = gamingLowLatency,
+                onLowLatency = { gamingLowLatency = it; prefs.edit().putBoolean("gamingLowLatency", it).apply() },
                 onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
@@ -550,6 +556,10 @@ private fun GamingPanel(
     onUrl: (String) -> Unit,
     quality: String,
     audioEnabled: Boolean,
+    micEnabled: Boolean,
+    onMic: (Boolean) -> Unit,
+    lowLatency: Boolean,
+    onLowLatency: (Boolean) -> Unit,
     onQuality: (String) -> Unit,
     onAudio: (Boolean) -> Unit,
     onStart: () -> Unit,
@@ -622,11 +632,18 @@ private fun GamingPanel(
         }
 
         Spacer(Modifier.height(10.dp))
+        Text("Controles rápidos", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = { if (!running) onMic(!micEnabled) }, label = { Text(if (micEnabled) "🎙 Mic ON" else "🔇 Mic OFF") })
+            AssistChip(onClick = { if (!running) onAudio(!audioEnabled) }, label = { Text(if (audioEnabled) "🔊 Juego ON" else "🔇 Juego OFF") })
+            AssistChip(onClick = { onLowLatency(!lowLatency) }, label = { Text(if (lowLatency) "⚡ Baja latencia" else "🐢 Estable") })
+        }
+        Spacer(Modifier.height(10.dp))
         Text("Audio", style = MaterialTheme.typography.titleMedium)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
                 onClick = { if (!running) onAudio(!audioEnabled) },
-                label = { Text(if (audioEnabled) "🎙 Mic + juego" else "🔇 Audio apagado") }
+                label = { Text(if (audioEnabled) "🎮 Audio del juego" else "🔇 Juego silenciado") }
             )
             AssistChip(onClick = {}, enabled = false, label = { Text("📱 Pantalla completa") })
         }
