@@ -6,10 +6,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.content.Intent
+import android.media.projection.MediaProjectionManager
 import android.view.SurfaceHolder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -104,6 +107,21 @@ private fun StudioScreen() {
     var elapsed by remember { mutableLongStateOf(0L) }
     var startedAt by remember { mutableLongStateOf(0L) }
     var bitrateText by remember { mutableStateOf("—") }
+    var gamingUrl by remember { mutableStateOf(prefs.getString("gamingUrl", "") ?: "") }
+    var gamingRunning by remember { mutableStateOf(false) }
+    val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
+            val intent = Intent(context, ScreenStreamService::class.java).apply {
+                action = ScreenStreamService.ACTION_START
+                putExtra(ScreenStreamService.EXTRA_RESULT_CODE, result.resultCode)
+                putExtra(ScreenStreamService.EXTRA_DATA, result.data)
+                putExtra(ScreenStreamService.EXTRA_URL, gamingUrl.trim())
+                putExtra(ScreenStreamService.EXTRA_INTERNAL_AUDIO, true)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ContextCompat.startForegroundService(context, intent) else context.startService(intent)
+            gamingRunning = true
+        }
+    }
     var camera: MultiCamera2? by remember { mutableStateOf(null) }
 
     LaunchedEffect(isStreaming) {
@@ -219,7 +237,7 @@ private fun StudioScreen() {
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("EN VIVO", "ESCENAS", "AJUSTES").forEach { item ->
+            listOf("EN VIVO", "🎮 GAMING", "ESCENAS", "AJUSTES").forEach { item ->
                 FilterChip(tab == item, { tab = item }, label = { Text(item) })
             }
         }
@@ -281,6 +299,16 @@ private fun StudioScreen() {
                     } else {
                         status = "La grabación requiere Android 8 o superior"
                     }
+                }
+            )
+            "🎮 GAMING" -> GamingPanel(
+                url = gamingUrl,
+                onUrl = { gamingUrl = it; prefs.edit().putString("gamingUrl", it).apply() },
+                running = gamingRunning,
+                onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
+                onStop = {
+                    context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
+                    gamingRunning = false
                 }
             )
             "ESCENAS" -> ScenesPanel(title, { title = it }, quality, { quality = it; saveSettings() })
