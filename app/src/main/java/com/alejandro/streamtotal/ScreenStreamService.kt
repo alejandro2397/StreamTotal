@@ -72,7 +72,7 @@ class ScreenStreamService : Service(), ConnectChecker {
                 getGlInterface().setCameraOrientation(0)
             }
             val prepared = stream!!.prepareVideo(1280, 720, 30, 3_500_000) &&
-                stream!!.prepareAudio(128_000, 44_100, true, false, true)
+                stream!!.prepareAudio(44_100, true, 128_000, false, true)
             if (!prepared) { stopWithMessage("No se pudo preparar 720p/30"); return }
             stream!!.changeVideoSource(screen)
             if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, true) &&
