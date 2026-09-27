@@ -140,6 +140,7 @@ private fun StudioScreen() {
     var gamingShowStats by remember { mutableStateOf(prefs.getBoolean("gamingShowStats", true)) }
     var gamingAutoScene by remember { mutableStateOf(prefs.getBoolean("gamingAutoScene", false)) }
     var gamingPerformance by remember { mutableStateOf(prefs.getBoolean("gamingPerformance", true)) }
+    var gamingPreset by remember { mutableStateOf(prefs.getString("gamingPreset", "Free Fire") ?: "Free Fire") }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -424,6 +425,8 @@ private fun StudioScreen() {
                 onAutoScene = { gamingAutoScene = it; prefs.edit().putBoolean("gamingAutoScene", it).apply() },
                 performanceMode = gamingPerformance,
                 onPerformanceMode = { gamingPerformance = it; prefs.edit().putBoolean("gamingPerformance", it).apply() },
+                preset = gamingPreset,
+                onPreset = { gamingPreset = it; prefs.edit().putString("gamingPreset", it).apply() },
                 onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
@@ -590,6 +593,8 @@ private fun GamingPanel(
     onAutoScene: (Boolean) -> Unit,
     performanceMode: Boolean,
     onPerformanceMode: (Boolean) -> Unit,
+    preset: String,
+    onPreset: (String) -> Unit,
     onQuality: (String) -> Unit,
     onAudio: (Boolean) -> Unit,
     onStart: () -> Unit,
@@ -653,6 +658,13 @@ private fun GamingPanel(
             enabled = !running
         )
 
+        Spacer(Modifier.height(10.dp))
+        Text("Preset de transmisión", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Free Fire", "YouTube", "Facebook", "TikTok").forEach { p ->
+                FilterChip(selected = preset == p, onClick = { onPreset(p) }, label = { Text(p) })
+            }
+        }
         Spacer(Modifier.height(10.dp))
         Text("Calidad gaming", style = MaterialTheme.typography.titleMedium)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
