@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.media.projection.MediaProjectionManager
 import android.view.SurfaceHolder
 import androidx.activity.ComponentActivity
@@ -123,6 +125,11 @@ private fun StudioScreen() {
     var bitrateText by remember { mutableStateOf("—") }
     var gamingUrl by remember { mutableStateOf(prefs.getString("gamingUrl", "") ?: "") }
     var gamingRunning by remember { mutableStateOf(false) }
+    var gamingStatus by remember { mutableStateOf("Listo para gaming") }
+    var gamingBitrate by remember { mutableStateOf("—") }
+    var gamingElapsed by remember { mutableLongStateOf(0L) }
+    var gamingStartedAt by remember { mutableLongStateOf(0L) }
+    var gamingScene by remember { mutableStateOf("Gameplay") }
     var gamingQuality by remember { mutableStateOf(prefs.getString("gamingQuality", "720p") ?: "720p") }
     var gamingAudio by remember { mutableStateOf(prefs.getBoolean("gamingAudio", true)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -137,9 +144,44 @@ private fun StudioScreen() {
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ContextCompat.startForegroundService(context, intent) else context.startService(intent)
             gamingRunning = true
+            gamingStartedAt = SystemClock.elapsedRealtime()
+            gamingElapsed = 0L
+            gamingStatus = "Conectando gaming…"
+            gamingBitrate = "—"
         }
     }
     var camera: MultiCamera2? by remember { mutableStateOf(null) }
+
+    LaunchedEffect(gamingRunning) {
+        while (gamingRunning) {
+            gamingElapsed = (SystemClock.elapsedRealtime() - gamingStartedAt) / 1000L
+            delay(1000)
+        }
+    }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                if (intent?.action == ScreenStreamService.ACTION_STATUS) {
+                    gamingStatus = intent.getStringExtra(ScreenStreamService.EXTRA_STATUS) ?: gamingStatus
+                    if (intent.hasExtra(ScreenStreamService.EXTRA_BITRATE)) {
+                        val value = intent.getLongExtra(ScreenStreamService.EXTRA_BITRATE, 0L)
+                        gamingBitrate = if (value > 0L) String.format(Locale.US, "%.1f Mbps", value / 1_000_000.0) else "—"
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter(ScreenStreamService.ACTION_STATUS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose {
+            try { context.unregisterReceiver(receiver) } catch (_: Exception) {}
+        }
+    }
 
     LaunchedEffect(isStreaming) {
         while (isStreaming) {
@@ -346,6 +388,12 @@ private fun StudioScreen() {
                 }
             )
             "🎮 GAMING" -> GamingPanel(
+                running = gamingRunning,
+                status = gamingStatus,
+                bitrate = gamingBitrate,
+                elapsed = gamingElapsed,
+                scene = gamingScene,
+                onScene = { gamingScene = it },
                 url = gamingUrl,
                 onUrl = { gamingUrl = it; prefs.edit().putString("gamingUrl", it).apply() },
                 running = gamingRunning,
@@ -357,6 +405,10 @@ private fun StudioScreen() {
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
                     gamingRunning = false
+                    gamingStartedAt = 0L
+                    gamingElapsed = 0L
+                    gamingStatus = "Gaming detenido"
+                    gamingBitrate = "—"
                 }
             )
             "ESCENAS" -> ScenesPanel(title, { title = it }, quality, { quality = it; saveSettings() })
@@ -489,9 +541,14 @@ private fun LivePanel(
 
 @Composable
 private fun GamingPanel(
+    running: Boolean,
+    status: String,
+    bitrate: String,
+    elapsed: Long,
+    scene: String,
+    onScene: (String) -> Unit,
     url: String,
     onUrl: (String) -> Unit,
-    running: Boolean,
     quality: String,
     audioEnabled: Boolean,
     onQuality: (String) -> Unit,
@@ -499,41 +556,64 @@ private fun GamingPanel(
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
+    val targetBitrate = when (quality) {
+        "480p" -> "2.0 Mbps"
+        "1080p" -> "5.5 Mbps"
+        else -> "3.5 Mbps"
+    }
+
     Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF181522)
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFF171321)
         ) {
-            Column(Modifier.padding(18.dp)) {
-                Text("🎮 MODO GAMING", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Pensado para Free Fire: captura la pantalla completa y mantiene StreamTotal trabajando mientras juegas.",
-                    color = Color(0xFFD0CBD8)
-                )
+            Column(Modifier.padding(16.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("🎮 GAMING STUDIO", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            if (running) "● $status" else "Free Fire · listo para jugar",
+                            color = if (running) Color(0xFFFF5A6F) else Color(0xFFD0CBD8)
+                        )
+                    }
+                    Text(formatTime(elapsed), color = Color.White, style = MaterialTheme.typography.titleMedium)
+                }
                 Spacer(Modifier.height(14.dp))
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (running) Color(0xFF7A1730) else Color(0xFF2A2533)
-                ) {
-                    Text(
-                        if (running) "🔴 TRANSMISIÓN GAMING ACTIVA" else "⚡ 720p · 30 FPS · 3.5 Mbps",
-                        color = Color.White,
-                        modifier = Modifier.fillMaxWidth().padding(13.dp)
-                    )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GamingStatCard("FPS", "30", "objetivo", Modifier.weight(1f))
+                    GamingStatCard("BITRATE", bitrate, if (bitrate == "—") "objetivo $targetBitrate" else "actual", Modifier.weight(1f))
+                    GamingStatCard("CALIDAD", quality, targetBitrate, Modifier.weight(1f))
                 }
             }
         }
+
         Spacer(Modifier.height(12.dp))
+
+        Text("Escena rápida", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(7.dp))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Inicio", "Gameplay", "Pausa", "Final").forEach { item ->
+                FilterChip(
+                    selected = scene == item,
+                    onClick = { onScene(item) },
+                    label = { Text(if (scene == item) "● $item" else item) }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         OutlinedTextField(
             value = url,
             onValueChange = onUrl,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text("RTMP para Free Fire") },
-            placeholder = { Text("rtmp://servidor/app/clave") }
+            placeholder = { Text("rtmp://servidor/app/clave") },
+            enabled = !running
         )
+
         Spacer(Modifier.height(10.dp))
         Text("Calidad gaming", style = MaterialTheme.typography.titleMedium)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -541,30 +621,44 @@ private fun GamingPanel(
                 FilterChip(selected = quality == q, onClick = { if (!running) onQuality(q) }, label = { Text(q) })
             }
         }
+
         Spacer(Modifier.height(10.dp))
         Text("Audio", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "StreamTotal intentará mezclar el audio interno del juego + micrófono en Android 10+. Algunos juegos pueden restringir la captura de audio.",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(onClick = { if (!running) onAudio(!audioEnabled) }, label = { Text(if (audioEnabled) "🎙 Mic + juego" else "🔇 Audio apagado") })
+            AssistChip(
+                onClick = { if (!running) onAudio(!audioEnabled) },
+                label = { Text(if (audioEnabled) "🎙 Mic + juego" else "🔇 Audio apagado") }
+            )
             AssistChip(onClick = {}, enabled = false, label = { Text("📱 Pantalla completa") })
         }
-        Spacer(Modifier.height(14.dp))
+
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { onScene("Pausa") },
+                enabled = running,
+                modifier = Modifier.weight(1f)
+            ) { Text("⏸ Pausa") }
+            OutlinedButton(
+                onClick = { onScene("Gameplay") },
+                enabled = running,
+                modifier = Modifier.weight(1f)
+            ) { Text("🎮 Gameplay") }
+        }
+
+        Spacer(Modifier.height(8.dp))
         Button(
             onClick = if (running) onStop else onStart,
             enabled = running || url.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(60.dp),
+            modifier = Modifier.fillMaxWidth().height(58.dp),
             shape = RoundedCornerShape(18.dp)
         ) {
-            Text(if (running) "⏹ DETENER GAMING" else "🟢 CAPTURAR PANTALLA Y TRANSMITIR")
+            Text(if (running) "⏹ DETENER GAMING" else "🔴 INICIAR GAMING")
         }
+
         Spacer(Modifier.height(8.dp))
         Text(
-            "Al pulsar iniciar Android te pedirá permiso para compartir la pantalla. Después puedes abrir Free Fire y StreamTotal seguirá transmitiendo.",
+            "Inicia la captura, acepta el permiso de Android y luego abre Free Fire. StreamTotal continuará en segundo plano.",
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
@@ -572,19 +666,31 @@ private fun GamingPanel(
 }
 
 @Composable
+private fun GamingStatCard(label: String, value: String, detail: String, modifier: Modifier) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(14.dp), color = Color(0xFF2A2533)) {
+        Column(Modifier.padding(10.dp)) {
+            Text(label, color = Color(0xFFBEB7C8), style = MaterialTheme.typography.labelSmall)
+            Text(value, color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Text(detail, color = Color(0xFFAAA2B3), style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
 private fun ScenesPanel(title: String, onTitle: (String) -> Unit, quality: String, onQuality: (String) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Text("Escenas", style = MaterialTheme.typography.titleLarge)
-        Text("Perfiles rápidos para preparar la transmisión.")
+        Text("Prepara el flujo del directo con Inicio, Gameplay, Pausa y Final.", color = Color.Gray)
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("🎥 Cámara", "🎤 Entrevista", "🎮 Gaming").forEach { scene ->
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("🎬 Inicio", "🎮 Gameplay", "⏸ Pausa", "🏁 Final").forEach { scene ->
                 OutlinedButton(onClick = {
                     onTitle(
                         when (scene) {
-                            "🎤 Entrevista" -> "Entrevista en vivo"
-                            "🎮 Gaming" -> "Gaming en vivo"
-                            else -> "Mi transmisión"
+                            "🎬 Inicio" -> "Bienvenidos al directo"
+                            "🎮 Gameplay" -> "Gameplay en vivo"
+                            "⏸ Pausa" -> "Volvemos enseguida"
+                            else -> "Gracias por ver"
                         }
                     )
                 }) { Text(scene) }
