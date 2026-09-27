@@ -20,6 +20,9 @@ class ScreenStreamService : Service(), ConnectChecker {
     companion object {
         const val ACTION_START = "com.alejandro.streamtotal.START_SCREEN"
         const val ACTION_STOP = "com.alejandro.streamtotal.STOP_SCREEN"
+        const val ACTION_STATUS = "com.alejandro.streamtotal.GAMING_STATUS"
+        const val EXTRA_STATUS = "status"
+        const val EXTRA_BITRATE = "bitrate"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_DATA = "projection_data"
         const val EXTRA_URL = "rtmp_url"
@@ -107,7 +110,20 @@ class ScreenStreamService : Service(), ConnectChecker {
         .setContentTitle("StreamTotal Gaming").setContentText(text)
         .setOngoing(true).setSilent(true).build()
 
-    private fun updateNotification(text: String) =
+    private fun broadcastStatus(text: String, bitrate: Long? = null) {
+        sendBroadcast(Intent(ACTION_STATUS).apply {
+            putExtra(EXTRA_STATUS, text)
+            if (bitrate != null) putExtra(EXTRA_BITRATE, bitrate)
+        })
+    }
+
+    private fun updateNotification(text: String) {
+        broadcastStatus(text)
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(NOTIFICATION_ID, notification(text))
+    }
+
+    private fun updateNotificationLegacy(text: String) =
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .notify(NOTIFICATION_ID, notification(text))
 
@@ -125,7 +141,10 @@ class ScreenStreamService : Service(), ConnectChecker {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onConnectionStarted(url: String) = updateNotification("Conectando gaming…")
     override fun onConnectionSuccess() = updateNotification("🔴 StreamTotal Gaming · EN VIVO")
-    override fun onNewBitrate(bitrate: Long) = updateNotification("🔴 Gaming · " + String.format(java.util.Locale.US, "%.1f", bitrate / 1_000_000.0) + " Mbps")
+    override fun onNewBitrate(bitrate: Long) {
+        broadcastStatus("🔴 StreamTotal Gaming · EN VIVO", bitrate)
+        updateNotification("🔴 Gaming · " + String.format(java.util.Locale.US, "%.1f", bitrate / 1_000_000.0) + " Mbps")
+    }
     override fun onConnectionFailed(reason: String) = updateNotification("Error de conexión")
     override fun onDisconnect() = updateNotification("Transmisión desconectada")
     override fun onAuthError() = updateNotification("Error de autenticación RTMP")
