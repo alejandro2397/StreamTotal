@@ -851,7 +851,7 @@ private fun AccountConnectRow(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = if (connected) Color(0xFFE8F7EF) else Color.White),
+        color = if (connected) Color(0xFFE8F7EF) else Color.White,
         tonalElevation = 1.dp
     ) {
         Row(
