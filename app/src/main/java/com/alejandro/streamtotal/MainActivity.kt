@@ -146,6 +146,7 @@ private fun StudioScreen() {
     var connectedEmail by remember { mutableStateOf(prefs.getBoolean("connectedEmail", false)) }
     var connectedFacebook by remember { mutableStateOf(prefs.getBoolean("connectedFacebook", false)) }
     var connectedTikTok by remember { mutableStateOf(prefs.getBoolean("connectedTikTok", false)) }
+    var connectedYouTube by remember { mutableStateOf(prefs.getBoolean("connectedYouTube", false)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
