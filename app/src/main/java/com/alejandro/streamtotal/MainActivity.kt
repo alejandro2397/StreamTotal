@@ -832,7 +832,6 @@ private fun SettingsPanel(
 private fun formatTime(seconds: Long): String =
     String.format(Locale.US, "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
 
-@Composable
 private val StreamPurple = Color(0xFF6C3BFF)
 private val StreamPurpleDark = Color(0xFF4D25C7)
 private val StreamCyan = Color(0xFF00A8D6)
