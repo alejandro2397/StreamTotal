@@ -374,6 +374,79 @@ private fun LivePanel(
 }
 
 @Composable
+private fun GamingPanel(
+    url: String,
+    onUrl: (String) -> Unit,
+    running: Boolean,
+    onStart: () -> Unit,
+    onStop: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF181522)
+        ) {
+            Column(Modifier.padding(18.dp)) {
+                Text("🎮 MODO GAMING", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Pensado para Free Fire: captura la pantalla completa y mantiene StreamTotal trabajando mientras juegas.",
+                    color = Color(0xFFD0CBD8)
+                )
+                Spacer(Modifier.height(14.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (running) Color(0xFF7A1730) else Color(0xFF2A2533)
+                ) {
+                    Text(
+                        if (running) "🔴 TRANSMISIÓN GAMING ACTIVA" else "⚡ 720p · 30 FPS · 3.5 Mbps",
+                        color = Color.White,
+                        modifier = Modifier.fillMaxWidth().padding(13.dp)
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = url,
+            onValueChange = onUrl,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("RTMP para Free Fire") },
+            placeholder = { Text("rtmp://servidor/app/clave") }
+        )
+        Spacer(Modifier.height(10.dp))
+        Text("Audio", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "StreamTotal intentará mezclar el audio interno del juego + micrófono en Android 10+. Algunos juegos pueden restringir la captura de audio.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = {}, enabled = false, label = { Text("📱 Pantalla completa") })
+            AssistChip(onClick = {}, enabled = false, label = { Text("🎙 Mic + juego") })
+        }
+        Spacer(Modifier.height(14.dp))
+        Button(
+            onClick = if (running) onStop else onStart,
+            enabled = running || url.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Text(if (running) "⏹ DETENER GAMING" else "🟢 CAPTURAR PANTALLA Y TRANSMITIR")
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Al pulsar iniciar Android te pedirá permiso para compartir la pantalla. Después puedes abrir Free Fire y StreamTotal seguirá transmitiendo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
+@Composable
 private fun ScenesPanel(title: String, onTitle: (String) -> Unit, quality: String, onQuality: (String) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Text("Escenas", style = MaterialTheme.typography.titleLarge)
