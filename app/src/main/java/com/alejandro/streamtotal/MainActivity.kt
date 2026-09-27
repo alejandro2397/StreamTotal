@@ -396,7 +396,6 @@ private fun StudioScreen() {
                 onScene = { gamingScene = it },
                 url = gamingUrl,
                 onUrl = { gamingUrl = it; prefs.edit().putString("gamingUrl", it).apply() },
-                running = gamingRunning,
                 quality = gamingQuality,
                 audioEnabled = gamingAudio,
                 onQuality = { gamingQuality = it; prefs.edit().putString("gamingQuality", it).apply() },
