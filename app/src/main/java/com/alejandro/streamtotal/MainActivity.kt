@@ -141,6 +141,8 @@ private fun StudioScreen() {
     var gamingAutoScene by remember { mutableStateOf(prefs.getBoolean("gamingAutoScene", false)) }
     var gamingPerformance by remember { mutableStateOf(prefs.getBoolean("gamingPerformance", true)) }
     var gamingPreset by remember { mutableStateOf(prefs.getString("gamingPreset", "Free Fire") ?: "Free Fire") }
+    var multiDestinations by remember { mutableStateOf(prefs.getBoolean("multiDestinations", false)) }
+    var destinationCount by remember { mutableIntStateOf(prefs.getInt("destinationCount", 1)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -427,6 +429,10 @@ private fun StudioScreen() {
                 onPerformanceMode = { gamingPerformance = it; prefs.edit().putBoolean("gamingPerformance", it).apply() },
                 preset = gamingPreset,
                 onPreset = { gamingPreset = it; prefs.edit().putString("gamingPreset", it).apply() },
+                multiDestinations = multiDestinations,
+                onMultiDestinations = { multiDestinations = it; prefs.edit().putBoolean("multiDestinations", it).apply() },
+                destinationCount = destinationCount,
+                onDestinationCount = { destinationCount = it.coerceIn(1, 4); prefs.edit().putInt("destinationCount", destinationCount).apply() },
                 onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
@@ -595,6 +601,10 @@ private fun GamingPanel(
     onPerformanceMode: (Boolean) -> Unit,
     preset: String,
     onPreset: (String) -> Unit,
+    multiDestinations: Boolean,
+    onMultiDestinations: (Boolean) -> Unit,
+    destinationCount: Int,
+    onDestinationCount: (Int) -> Unit,
     onQuality: (String) -> Unit,
     onAudio: (Boolean) -> Unit,
     onStart: () -> Unit,
@@ -663,6 +673,17 @@ private fun GamingPanel(
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Free Fire", "YouTube", "Facebook", "TikTok").forEach { p ->
                 FilterChip(selected = preset == p, onClick = { onPreset(p) }, label = { Text(p) })
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(10.dp))
+        Text("Centro Multistream", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = { if (!running) onMultiDestinations(!multiDestinations) }, label = { Text(if (multiDestinations) "🌐 Multistream ON" else "🌐 Un destino") })
+            if (multiDestinations) {
+                (1..4).forEach { n ->
+                    FilterChip(selected = destinationCount == n, onClick = { if (!running) onDestinationCount(n) }, label = { Text("$n destinos") })
+                }
             }
         }
         Spacer(Modifier.height(10.dp))
