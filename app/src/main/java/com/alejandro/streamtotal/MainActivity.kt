@@ -143,6 +143,9 @@ private fun StudioScreen() {
     var gamingPreset by remember { mutableStateOf(prefs.getString("gamingPreset", "Free Fire") ?: "Free Fire") }
     var multiDestinations by remember { mutableStateOf(prefs.getBoolean("multiDestinations", false)) }
     var destinationCount by remember { mutableIntStateOf(prefs.getInt("destinationCount", 1)) }
+    var connectedEmail by remember { mutableStateOf(prefs.getBoolean("connectedEmail", false)) }
+    var connectedFacebook by remember { mutableStateOf(prefs.getBoolean("connectedFacebook", false)) }
+    var connectedTikTok by remember { mutableStateOf(prefs.getBoolean("connectedTikTok", false)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -826,6 +829,40 @@ private fun SettingsPanel(
         }
         Spacer(Modifier.height(12.dp))
         Text("El bitrate puede ajustarse durante la transmisión.", color = Color.Gray)
+    }
+}
+
+
+@Composable
+private fun AccountConnectRow(
+    icon: String,
+    name: String,
+    connected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = if (connected) Color(0xFFE8F7EF) else Color.White),
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(icon, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleMedium)
+                Text(if (connected) "Cuenta conectada" else "No conectada", style = MaterialTheme.typography.bodySmall, color = if (connected) StreamSuccess else Color.Gray)
+            }
+            OutlinedButton(
+                onClick = onClick,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(if (connected) "Desconectar" else "Conectar")
+            }
+        }
     }
 }
 
