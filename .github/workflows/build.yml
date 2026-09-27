@@ -2,7 +2,7 @@ name: Build StreamTotal
 
 on:
   push:
-    branches: ["main", "feature/studio-0.3"]
+    branches: ["main", "feature/studio-0.3", "feature/studio-0.4"]
   workflow_dispatch:
 
 jobs:
