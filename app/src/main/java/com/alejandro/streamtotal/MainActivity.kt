@@ -138,6 +138,8 @@ private fun StudioScreen() {
     var gamingChatOverlay by remember { mutableStateOf(prefs.getBoolean("gamingChatOverlay", false)) }
     var gamingAutoReconnect by remember { mutableStateOf(prefs.getBoolean("gamingAutoReconnect", true)) }
     var gamingShowStats by remember { mutableStateOf(prefs.getBoolean("gamingShowStats", true)) }
+    var gamingAutoScene by remember { mutableStateOf(prefs.getBoolean("gamingAutoScene", false)) }
+    var gamingPerformance by remember { mutableStateOf(prefs.getBoolean("gamingPerformance", true)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -418,6 +420,10 @@ private fun StudioScreen() {
                 onAutoReconnect = { gamingAutoReconnect = it; prefs.edit().putBoolean("gamingAutoReconnect", it).apply() },
                 showStats = gamingShowStats,
                 onShowStats = { gamingShowStats = it; prefs.edit().putBoolean("gamingShowStats", it).apply() },
+                autoScene = gamingAutoScene,
+                onAutoScene = { gamingAutoScene = it; prefs.edit().putBoolean("gamingAutoScene", it).apply() },
+                performanceMode = gamingPerformance,
+                onPerformanceMode = { gamingPerformance = it; prefs.edit().putBoolean("gamingPerformance", it).apply() },
                 onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
@@ -580,6 +586,10 @@ private fun GamingPanel(
     onAutoReconnect: (Boolean) -> Unit,
     showStats: Boolean,
     onShowStats: (Boolean) -> Unit,
+    autoScene: Boolean,
+    onAutoScene: (Boolean) -> Unit,
+    performanceMode: Boolean,
+    onPerformanceMode: (Boolean) -> Unit,
     onQuality: (String) -> Unit,
     onAudio: (Boolean) -> Unit,
     onStart: () -> Unit,
@@ -665,6 +675,8 @@ private fun GamingPanel(
             AssistChip(onClick = { onChatOverlay(!chatOverlay) }, label = { Text(if (chatOverlay) "💬 Chat ON" else "💬 Chat OFF") })
             AssistChip(onClick = { onAutoReconnect(!autoReconnect) }, label = { Text(if (autoReconnect) "🔄 Reconexión ON" else "🔄 Reconexión OFF") })
             AssistChip(onClick = { onShowStats(!showStats) }, label = { Text(if (showStats) "📊 Stats ON" else "📊 Stats OFF") })
+            AssistChip(onClick = { onAutoScene(!autoScene) }, label = { Text(if (autoScene) "🎬 Auto escenas" else "🎬 Manual escenas") })
+            AssistChip(onClick = { onPerformanceMode(!performanceMode) }, label = { Text(if (performanceMode) "🚀 Rendimiento" else "🔋 Equilibrado") })
         }
         Spacer(Modifier.height(10.dp))
         Text("Audio", style = MaterialTheme.typography.titleMedium)
