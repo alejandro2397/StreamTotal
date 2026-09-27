@@ -76,7 +76,7 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Text("Permite cámara y micrófono para preparar tu transmisión.")
         Spacer(Modifier.height(20.dp))
-        Button(onClick = onRequest) { Text("PERMITIR ACCESO") }
+        Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = StreamPurple), modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) { Text("PERMITIR ACCESO") }
     }
 }
 
@@ -527,7 +527,7 @@ private fun SocialNetworksPanel(
             }
         }
         Spacer(Modifier.height(12.dp))
-        Button(onClick = onApply, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
+        Button(onClick = onApply, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = StreamPurple)) {
             Text("✓ GUARDAR DESTINO")
         }
         Spacer(Modifier.height(8.dp))
@@ -561,8 +561,9 @@ private fun LivePanel(
         Spacer(Modifier.height(10.dp))
         Button(
             onClick = if (isStreaming) onStop else onStart,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(18.dp)
+            modifier = Modifier.fillMaxWidth().height(58.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = if (isStreaming) StreamDanger else StreamPurple)
         ) {
             Text(if (isStreaming) "⏹ DETENER TRANSMISIÓN" else "🔴 INICIAR TRANSMISIÓN")
         }
@@ -739,8 +740,9 @@ private fun GamingPanel(
         Button(
             onClick = if (running) onStop else onStart,
             enabled = running || url.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(58.dp),
-            shape = RoundedCornerShape(18.dp)
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = if (running) StreamDanger else StreamPurple)
         ) {
             Text(if (running) "⏹ DETENER GAMING" else "🔴 INICIAR GAMING")
         }
@@ -831,6 +833,28 @@ private fun formatTime(seconds: Long): String =
     String.format(Locale.US, "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
 
 @Composable
+private val StreamPurple = Color(0xFF6C3BFF)
+private val StreamPurpleDark = Color(0xFF4D25C7)
+private val StreamCyan = Color(0xFF00A8D6)
+private val StreamDanger = Color(0xFFE63B5B)
+private val StreamSuccess = Color(0xFF19A974)
+private val StreamBackground = Color(0xFFF5F3F9)
+
+@Composable
 private fun StreamTotalTheme(content: @Composable () -> Unit) {
-    MaterialTheme(content = content)
+    val colors = lightColorScheme(
+        primary = StreamPurple,
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFE9E1FF),
+        onPrimaryContainer = StreamPurpleDark,
+        secondary = StreamCyan,
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFDDF7FF),
+        onSecondaryContainer = Color(0xFF004E63),
+        tertiary = StreamSuccess,
+        error = StreamDanger,
+        background = StreamBackground,
+        surface = Color.White
+    )
+    MaterialTheme(colorScheme = colors, content = content)
 }
