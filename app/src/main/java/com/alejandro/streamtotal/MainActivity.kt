@@ -123,6 +123,8 @@ private fun StudioScreen() {
     var bitrateText by remember { mutableStateOf("—") }
     var gamingUrl by remember { mutableStateOf(prefs.getString("gamingUrl", "") ?: "") }
     var gamingRunning by remember { mutableStateOf(false) }
+    var gamingQuality by remember { mutableStateOf(prefs.getString("gamingQuality", "720p") ?: "720p") }
+    var gamingAudio by remember { mutableStateOf(prefs.getBoolean("gamingAudio", true)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -130,7 +132,8 @@ private fun StudioScreen() {
                 putExtra(ScreenStreamService.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(ScreenStreamService.EXTRA_DATA, result.data)
                 putExtra(ScreenStreamService.EXTRA_URL, gamingUrl.trim())
-                putExtra(ScreenStreamService.EXTRA_INTERNAL_AUDIO, true)
+                putExtra(ScreenStreamService.EXTRA_INTERNAL_AUDIO, gamingAudio)
+                putExtra(ScreenStreamService.EXTRA_QUALITY, gamingQuality)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ContextCompat.startForegroundService(context, intent) else context.startService(intent)
             gamingRunning = true
@@ -346,6 +349,10 @@ private fun StudioScreen() {
                 url = gamingUrl,
                 onUrl = { gamingUrl = it; prefs.edit().putString("gamingUrl", it).apply() },
                 running = gamingRunning,
+                quality = gamingQuality,
+                audioEnabled = gamingAudio,
+                onQuality = { gamingQuality = it; prefs.edit().putString("gamingQuality", it).apply() },
+                onAudio = { gamingAudio = it; prefs.edit().putBoolean("gamingAudio", it).apply() },
                 onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
@@ -485,6 +492,10 @@ private fun GamingPanel(
     url: String,
     onUrl: (String) -> Unit,
     running: Boolean,
+    quality: String,
+    audioEnabled: Boolean,
+    onQuality: (String) -> Unit,
+    onAudio: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
@@ -524,6 +535,13 @@ private fun GamingPanel(
             placeholder = { Text("rtmp://servidor/app/clave") }
         )
         Spacer(Modifier.height(10.dp))
+        Text("Calidad gaming", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("480p", "720p", "1080p").forEach { q ->
+                FilterChip(selected = quality == q, onClick = { if (!running) onQuality(q) }, label = { Text(q) })
+            }
+        }
+        Spacer(Modifier.height(10.dp))
         Text("Audio", style = MaterialTheme.typography.titleMedium)
         Text(
             "StreamTotal intentará mezclar el audio interno del juego + micrófono en Android 10+. Algunos juegos pueden restringir la captura de audio.",
@@ -532,8 +550,8 @@ private fun GamingPanel(
         )
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = { if (!running) onAudio(!audioEnabled) }, label = { Text(if (audioEnabled) "🎙 Mic + juego" else "🔇 Audio apagado") })
             AssistChip(onClick = {}, enabled = false, label = { Text("📱 Pantalla completa") })
-            AssistChip(onClick = {}, enabled = false, label = { Text("🎙 Mic + juego") })
         }
         Spacer(Modifier.height(14.dp))
         Button(
