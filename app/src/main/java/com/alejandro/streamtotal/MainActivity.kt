@@ -136,6 +136,8 @@ private fun StudioScreen() {
     var gamingLowLatency by remember { mutableStateOf(prefs.getBoolean("gamingLowLatency", true)) }
     var gamingAutoOpen by remember { mutableStateOf(prefs.getBoolean("gamingAutoOpen", true)) }
     var gamingChatOverlay by remember { mutableStateOf(prefs.getBoolean("gamingChatOverlay", false)) }
+    var gamingAutoReconnect by remember { mutableStateOf(prefs.getBoolean("gamingAutoReconnect", true)) }
+    var gamingShowStats by remember { mutableStateOf(prefs.getBoolean("gamingShowStats", true)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
@@ -412,6 +414,10 @@ private fun StudioScreen() {
                 onAutoOpenGame = { gamingAutoOpen = it; prefs.edit().putBoolean("gamingAutoOpen", it).apply() },
                 chatOverlay = gamingChatOverlay,
                 onChatOverlay = { gamingChatOverlay = it; prefs.edit().putBoolean("gamingChatOverlay", it).apply() },
+                autoReconnect = gamingAutoReconnect,
+                onAutoReconnect = { gamingAutoReconnect = it; prefs.edit().putBoolean("gamingAutoReconnect", it).apply() },
+                showStats = gamingShowStats,
+                onShowStats = { gamingShowStats = it; prefs.edit().putBoolean("gamingShowStats", it).apply() },
                 onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
@@ -570,6 +576,10 @@ private fun GamingPanel(
     onAutoOpenGame: (Boolean) -> Unit,
     chatOverlay: Boolean,
     onChatOverlay: (Boolean) -> Unit,
+    autoReconnect: Boolean,
+    onAutoReconnect: (Boolean) -> Unit,
+    showStats: Boolean,
+    onShowStats: (Boolean) -> Unit,
     onQuality: (String) -> Unit,
     onAudio: (Boolean) -> Unit,
     onStart: () -> Unit,
@@ -599,7 +609,7 @@ private fun GamingPanel(
                     Text(formatTime(elapsed), color = Color.White, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.height(14.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (showStats) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GamingStatCard("FPS", "30", "objetivo", Modifier.weight(1f))
                     GamingStatCard("BITRATE", bitrate, if (bitrate == "—") "objetivo $targetBitrate" else "actual", Modifier.weight(1f))
                     GamingStatCard("CALIDAD", quality, targetBitrate, Modifier.weight(1f))
@@ -653,6 +663,8 @@ private fun GamingPanel(
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(onClick = { onAutoOpenGame(!autoOpenGame) }, label = { Text(if (autoOpenGame) "🎮 Abrir juego" else "🎮 Manual") })
             AssistChip(onClick = { onChatOverlay(!chatOverlay) }, label = { Text(if (chatOverlay) "💬 Chat ON" else "💬 Chat OFF") })
+            AssistChip(onClick = { onAutoReconnect(!autoReconnect) }, label = { Text(if (autoReconnect) "🔄 Reconexión ON" else "🔄 Reconexión OFF") })
+            AssistChip(onClick = { onShowStats(!showStats) }, label = { Text(if (showStats) "📊 Stats ON" else "📊 Stats OFF") })
         }
         Spacer(Modifier.height(10.dp))
         Text("Audio", style = MaterialTheme.typography.titleMedium)
