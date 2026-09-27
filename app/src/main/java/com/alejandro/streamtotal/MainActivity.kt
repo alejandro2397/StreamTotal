@@ -98,10 +98,17 @@ private data class SocialPreset(val name: String, val server: String, val hint: 
 private val socialPresets = listOf(
     SocialPreset("YouTube", "rtmp://a.rtmp.youtube.com/live2/", "Clave de emisión de YouTube"),
     SocialPreset("Facebook", "rtmps://live-api-s.facebook.com:443/rtmp/", "Clave de transmisión de Facebook"),
-    SocialPreset("Twitch", "rtmp://live.twitch.tv/app/", "Clave de transmisión de Twitch"),
     SocialPreset("TikTok", "", "Servidor y clave proporcionados por TikTok"),
+    SocialPreset("Twitch", "rtmp://live.twitch.tv/app/", "Clave de transmisión de Twitch"),
     SocialPreset("Kick", "", "Servidor y clave de transmisión de Kick"),
-    SocialPreset("Personalizado", "", "Servidor RTMP + clave")
+    SocialPreset("Instagram", "", "Disponible según la cuenta y las funciones de Live habilitadas"),
+    SocialPreset("X / Twitter", "", "Servidor RTMP y clave de transmisión de X"),
+    SocialPreset("LinkedIn", "", "Servidor y clave de LinkedIn Live, si están habilitados"),
+    SocialPreset("Rumble", "", "Servidor RTMP + clave de Rumble"),
+    SocialPreset("Trovo", "", "Servidor RTMP + clave de Trovo"),
+    SocialPreset("DLive", "", "Servidor RTMP + clave de DLive"),
+    SocialPreset("VK", "", "Servidor RTMP + clave de VK Live"),
+    SocialPreset("Custom RTMP", "", "Cualquier servidor RTMP compatible")
 )
 
 @Composable
