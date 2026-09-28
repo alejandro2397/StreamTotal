@@ -649,10 +649,26 @@ private fun GamingPanel(
                     Text(formatTime(elapsed), color = Color.White, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.height(14.dp))
-                if (showStats) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GamingStatCard("FPS", "30", "objetivo", Modifier.weight(1f))
-                    GamingStatCard("BITRATE", bitrate, if (bitrate == "—") "objetivo $targetBitrate" else "actual", Modifier.weight(1f))
-                    GamingStatCard("CALIDAD", quality, targetBitrate, Modifier.weight(1f))
+                if (showStats) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GamingStatCard("FPS", "30", "objetivo", Modifier.weight(1f))
+                        GamingStatCard("BITRATE", bitrate, if (bitrate == "—") "objetivo $targetBitrate" else "actual", Modifier.weight(1f))
+                        GamingStatCard("CALIDAD", quality, targetBitrate, Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (running) Color(0xFF183B2E) else Color(0xFF27222F)
+                    ) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (running) "● EN VIVO" else "○ LISTO", color = if (running) StreamSuccess else Color(0xFFBEB7C8), style = MaterialTheme.typography.labelLarge)
+                            Spacer(Modifier.width(12.dp))
+                            Text("Latencia " + if (lowLatency) "baja" else "normal", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                            Spacer(Modifier.weight(1f))
+                            Text(if (autoReconnect) "↻ Auto-reconexión" else "— Reconexión manual", color = Color(0xFFD0CBD8), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
         }
