@@ -869,9 +869,12 @@ private fun AccountConnectRow(
             }
             OutlinedButton(
                 onClick = onClick,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (connected) StreamSuccess else StreamPurple
+                )
             ) {
-                Text(if (connected) "Desconectar" else "Conectar")
+                Text(if (connected) "✓ Conectada" else "Conectar")
             }
         }
     }
