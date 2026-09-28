@@ -753,6 +753,15 @@ private fun GamingPanel(
         }
 
         Spacer(Modifier.height(12.dp))
+        Text("Acciones rápidas", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = { if (!running) onMic(!micEnabled) }, label = { Text(if (micEnabled) "🎙 Mic" else "🔇 Mic") }, modifier = Modifier.weight(1f))
+            AssistChip(onClick = { if (!running) onAudio(!audioEnabled) }, label = { Text(if (audioEnabled) "🔊 Juego" else "🔇 Juego") }, modifier = Modifier.weight(1f))
+            AssistChip(onClick = { if (running) onScene("Pausa") }, label = { Text("⏸ Pausa") }, modifier = Modifier.weight(1f))
+            AssistChip(onClick = { onScene("Gameplay") }, label = { Text("🎮 Juego") }, modifier = Modifier.weight(1f))
+        }
+
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { onScene("Pausa") },
