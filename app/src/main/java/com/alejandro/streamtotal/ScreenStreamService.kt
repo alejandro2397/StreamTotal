@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MixAudioSource
@@ -31,10 +32,15 @@ class ScreenStreamService : Service(), ConnectChecker {
         const val CHANNEL_ID = "streamtotal_gaming"
         const val NOTIFICATION_ID = 4107
     }
+
     private var stream: GenericStream? = null
     private var projection: android.media.projection.MediaProjection? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
-    override fun onCreate() { super.onCreate(); createChannel() }
+    override fun onCreate() {
+        super.onCreate()
+        createChannel()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -46,69 +52,124 @@ class ScreenStreamService : Service(), ConnectChecker {
 
     private fun startScreenStream(intent: Intent) {
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1)
-        val data = if (Build.VERSION.SDK_INT >= 33)
+        val data = if (Build.VERSION.SDK_INT >= 33) {
             intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
-        else {
+        } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(EXTRA_DATA)
         }
-        val url = intent.getStringExtra(EXTRA_URL).orEmpty()
+        val url = intent.getStringExtra(EXTRA_URL).orEmpty().trim()
         val quality = intent.getStringExtra(EXTRA_QUALITY) ?: "720p"
+
         if (resultCode == -1 || data == null || url.isBlank()) {
-            stopWithMessage("Falta autorización o destino RTMP")
+            stopWithMessage("Falta autorización de pantalla o destino RTMP")
             return
         }
+
         try {
             if (Build.VERSION.SDK_INT >= 29) {
                 startForeground(
-                    NOTIFICATION_ID, notification("Preparando transmisión de gaming…"),
+                    NOTIFICATION_ID,
+                    notification("Preparando captura y conexión…"),
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 )
-            } else startForeground(NOTIFICATION_ID, notification("Preparando transmisión de gaming…"))
+            } else {
+                startForeground(NOTIFICATION_ID, notification("Preparando captura y conexión…"))
+            }
+
+            acquireWakeLock()
 
             val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             projection?.stop()
             projection = manager.getMediaProjection(resultCode, data)
+                ?: throw IllegalStateException("Android no entregó la proyección de pantalla")
+
             val screen = ScreenSource(applicationContext, projection!!)
+            stream?.stopStream()
             stream?.release()
-            stream = GenericStream(applicationContext, this, NoVideoSource(), MicrophoneSource()).apply {
+
+            stream = GenericStream(
+                applicationContext,
+                this,
+                NoVideoSource(),
+                MicrophoneSource()
+            ).apply {
                 getGlInterface().setForceRender(true, 30)
                 getGlInterface().setCameraOrientation(0)
             }
+
             val video = when (quality) {
                 "480p" -> intArrayOf(854, 480, 2_000_000)
                 "1080p" -> intArrayOf(1920, 1080, 5_500_000)
                 else -> intArrayOf(1280, 720, 3_500_000)
             }
+
             val prepared = stream!!.prepareVideo(video[0], video[1], 30, video[2]) &&
                 stream!!.prepareAudio(44_100, true, 128_000, false, true)
-            if (!prepared) { stopWithMessage("No se pudo preparar 720p/30"); return }
+
+            if (!prepared) {
+                stopWithMessage("No se pudo preparar el codificador " + quality + "/30")
+                return
+            }
+
             stream!!.changeVideoSource(screen)
+
             if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, true) &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-            ) stream!!.changeAudioSource(MixAudioSource(projection!!))
+            ) {
+                stream!!.changeAudioSource(MixAudioSource(projection!!))
+            }
+
+            broadcastStatus("Conectando al servidor RTMP…")
             stream!!.startStream(url)
-            updateNotification("🔴 StreamTotal Gaming · EN VIVO")
         } catch (e: Exception) {
-            stopWithMessage("No se pudo iniciar la captura de pantalla")
+            stopWithMessage("Error al iniciar: " + (e.message ?: "captura no disponible"))
         }
     }
 
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val manager = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = manager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "StreamTotal:LiveStreaming"
+        ).apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } catch (_: Exception) {}
+        wakeLock = null
+    }
+
     private fun stopScreenStream() {
-        stream?.stopStream(); stream?.release(); stream = null
-        projection?.stop(); projection = null
-        stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+        try { stream?.stopStream() } catch (_: Exception) {}
+        try { stream?.release() } catch (_: Exception) {}
+        stream = null
+        try { projection?.stop() } catch (_: Exception) {}
+        projection = null
+        releaseWakeLock()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun stopWithMessage(message: String) {
-        updateNotification(message); stopScreenStream()
+        broadcastStatus(message)
+        stopScreenStream()
     }
 
     private fun notification(text: String) = NotificationCompat.Builder(this, CHANNEL_ID)
         .setSmallIcon(android.R.drawable.ic_media_play)
-        .setContentTitle("StreamTotal Gaming").setContentText(text)
-        .setOngoing(true).setSilent(true).build()
+        .setContentTitle("StreamTotal Gaming")
+        .setContentText(text)
+        .setOngoing(true)
+        .setSilent(true)
+        .build()
 
     private fun broadcastStatus(text: String, bitrate: Long? = null) {
         sendBroadcast(Intent(ACTION_STATUS).apply {
@@ -123,30 +184,61 @@ class ScreenStreamService : Service(), ConnectChecker {
             .notify(NOTIFICATION_ID, notification(text))
     }
 
-    private fun updateNotificationLegacy(text: String) =
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(NOTIFICATION_ID, notification(text))
-
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= 26)
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "StreamTotal Gaming", NotificationManager.IMPORTANCE_LOW)
-            )
+        if (Build.VERSION.SDK_INT >= 26) {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(
+                    NotificationChannel(
+                        CHANNEL_ID,
+                        "StreamTotal Gaming",
+                        NotificationManager.IMPORTANCE_LOW
+                    )
+                )
+        }
     }
 
     override fun onDestroy() {
-        stream?.stopStream(); stream?.release(); projection?.stop()
-        stream = null; projection = null; super.onDestroy()
+        try { stream?.stopStream() } catch (_: Exception) {}
+        try { stream?.release() } catch (_: Exception) {}
+        try { projection?.stop() } catch (_: Exception) {}
+        stream = null
+        projection = null
+        releaseWakeLock()
+        super.onDestroy()
     }
+
     override fun onBind(intent: Intent?): IBinder? = null
-    override fun onConnectionStarted(url: String) = updateNotification("Conectando gaming…")
-    override fun onConnectionSuccess() = updateNotification("🔴 StreamTotal Gaming · EN VIVO")
+
+    override fun onConnectionStarted(url: String) {
+        updateNotification("Conectando al servidor…")
+    }
+
+    override fun onConnectionSuccess() {
+        updateNotification("🔴 StreamTotal Gaming · EN VIVO")
+    }
+
     override fun onNewBitrate(bitrate: Long) {
         broadcastStatus("🔴 StreamTotal Gaming · EN VIVO", bitrate)
-        updateNotification("🔴 Gaming · " + String.format(java.util.Locale.US, "%.1f", bitrate / 1_000_000.0) + " Mbps")
+        updateNotification(
+            "🔴 Gaming · " +
+                String.format(java.util.Locale.US, "%.1f", bitrate / 1_000_000.0) +
+                " Mbps"
+        )
     }
-    override fun onConnectionFailed(reason: String) = updateNotification("Error de conexión")
-    override fun onDisconnect() = updateNotification("Transmisión desconectada")
-    override fun onAuthError() = updateNotification("Error de autenticación RTMP")
-    override fun onAuthSuccess() = updateNotification("Autenticación RTMP correcta")
+
+    override fun onConnectionFailed(reason: String) {
+        stopWithMessage("RTMP rechazado: " + reason.ifBlank { "revisa servidor y clave" })
+    }
+
+    override fun onDisconnect() {
+        stopWithMessage("Transmisión desconectada")
+    }
+
+    override fun onAuthError() {
+        stopWithMessage("Clave RTMP incorrecta o no autorizada")
+    }
+
+    override fun onAuthSuccess() {
+        updateNotification("Autenticación RTMP correcta · conectando…")
+    }
 }
