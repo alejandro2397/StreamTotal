@@ -61,8 +61,12 @@ class ScreenStreamService : Service(), ConnectChecker {
         val url = intent.getStringExtra(EXTRA_URL).orEmpty().trim()
         val quality = intent.getStringExtra(EXTRA_QUALITY) ?: "720p"
 
-        if (resultCode == -1 || data == null || url.isBlank()) {
-            stopWithMessage("Falta autorización de pantalla o destino RTMP")
+        if (resultCode == -1 || data == null) {
+            stopWithMessage("Android no autorizó la captura de pantalla")
+            return
+        }
+        if (!url.startsWith("rtmp://", true) && !url.startsWith("rtmps://", true)) {
+            stopWithMessage("Destino inválido: usa una URL RTMP o RTMPS")
             return
         }
 
@@ -121,7 +125,8 @@ class ScreenStreamService : Service(), ConnectChecker {
                 stream!!.changeAudioSource(MixAudioSource(projection!!))
             }
 
-            broadcastStatus("Conectando al servidor RTMP…")
+            broadcastStatus("Captura lista · conectando RTMP…")
+            updateNotification("Conectando al servidor RTMP…")
             stream!!.startStream(url)
         } catch (e: Exception) {
             stopWithMessage("Error al iniciar: " + (e.message ?: "captura no disponible"))
@@ -169,6 +174,7 @@ class ScreenStreamService : Service(), ConnectChecker {
         .setContentText(text)
         .setOngoing(true)
         .setSilent(true)
+        .setOnlyAlertOnce(true)
         .build()
 
     private fun broadcastStatus(text: String, bitrate: Long? = null) {
