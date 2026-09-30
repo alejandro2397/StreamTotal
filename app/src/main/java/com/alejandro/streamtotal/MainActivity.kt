@@ -142,7 +142,8 @@ private fun StudioScreen() {
     var elapsed by remember { mutableLongStateOf(0L) }
     var startedAt by remember { mutableLongStateOf(0L) }
     var bitrateText by remember { mutableStateOf("—") }
-    var gamingUrl by remember { mutableStateOf(prefs.getString("gamingUrl", "") ?: "") }
+    var gamingServer by remember { mutableStateOf(prefs.getString("gamingServer", "") ?: "") }
+    var gamingKey by remember { mutableStateOf(prefs.getString("gamingKey", "") ?: "") }
     var gamingRunning by remember { mutableStateOf(false) }
     var gamingStatus by remember { mutableStateOf("Listo para gaming") }
     var gamingBitrate by remember { mutableStateOf("—") }
@@ -169,12 +170,13 @@ private fun StudioScreen() {
     var connectedTwitch by remember { mutableStateOf(prefs.getBoolean("connectedTwitch", false)) }
     var connectedKick by remember { mutableStateOf(prefs.getBoolean("connectedKick", false)) }
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val gamingUrl = buildRtmpEndpoint(gamingServer, gamingKey)
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
             val intent = Intent(context, ScreenStreamService::class.java).apply {
                 action = ScreenStreamService.ACTION_START
                 putExtra(ScreenStreamService.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(ScreenStreamService.EXTRA_DATA, result.data)
-                putExtra(ScreenStreamService.EXTRA_URL, gamingUrl.trim())
+                putExtra(ScreenStreamService.EXTRA_URL, gamingUrl)
                 putExtra(ScreenStreamService.EXTRA_INTERNAL_AUDIO, gamingAudio)
                 putExtra(ScreenStreamService.EXTRA_QUALITY, gamingQuality)
             }
@@ -430,8 +432,10 @@ private fun StudioScreen() {
                 elapsed = gamingElapsed,
                 scene = gamingScene,
                 onScene = { gamingScene = it },
-                url = gamingUrl,
-                onUrl = { gamingUrl = it; prefs.edit().putString("gamingUrl", it).apply() },
+                server = gamingServer,
+                onServer = { gamingServer = it; prefs.edit().putString("gamingServer", it).apply() },
+                streamKey = gamingKey,
+                onStreamKey = { gamingKey = it; prefs.edit().putString("gamingKey", it).apply() },
                 quality = gamingQuality,
                 audioEnabled = gamingAudio,
                 onQuality = { gamingQuality = it; prefs.edit().putString("gamingQuality", it).apply() },
@@ -605,8 +609,10 @@ private fun GamingPanel(
     elapsed: Long,
     scene: String,
     onScene: (String) -> Unit,
-    url: String,
-    onUrl: (String) -> Unit,
+    server: String,
+    onServer: (String) -> Unit,
+    streamKey: String,
+    onStreamKey: (String) -> Unit,
     quality: String,
     audioEnabled: Boolean,
     micEnabled: Boolean,
@@ -701,13 +707,30 @@ private fun GamingPanel(
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
-            value = url,
-            onValueChange = onUrl,
+            value = server,
+            onValueChange = onServer,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("RTMP para Free Fire") },
-            placeholder = { Text("rtmp://servidor/app/clave") },
+            label = { Text("Servidor RTMP") },
+            placeholder = { Text("rtmps://servidor:443/app") },
             enabled = !running
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = streamKey,
+            onValueChange = onStreamKey,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Clave de transmisión") },
+            placeholder = { Text("sk_...") },
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            enabled = !running
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "StreamTotal unirá automáticamente servidor + clave al iniciar Gaming.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
         )
 
         Spacer(Modifier.height(10.dp))
@@ -789,7 +812,7 @@ private fun GamingPanel(
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = if (running) onStop else onStart,
-            enabled = running || url.isNotBlank(),
+            enabled = running || (server.isNotBlank() && streamKey.isNotBlank()),
             modifier = Modifier.fillMaxWidth().height(60.dp),
             shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (running) StreamDanger else StreamPurple)
@@ -914,6 +937,13 @@ private fun AccountConnectRow(
             }
         }
     }
+}
+
+private fun buildRtmpEndpoint(server: String, key: String): String {
+    val cleanServer = server.trim().trimEnd('/')
+    val cleanKey = key.trim().trim('/')
+    if (cleanServer.isBlank() || cleanKey.isBlank()) return ""
+    return "$cleanServer/$cleanKey"
 }
 
 private fun formatTime(seconds: Long): String =
