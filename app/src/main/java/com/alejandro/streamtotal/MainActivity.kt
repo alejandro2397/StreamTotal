@@ -984,6 +984,7 @@ private fun buildRtmpEndpoint(server: String, key: String): String {
     val cleanKey = key.trim().trim('/')
     if (cleanServer.isBlank() || cleanKey.isBlank()) return ""
 
+    // Build #81: YouTube RTMPS/443 connection fix.
     // YouTube: use encrypted RTMPS over 443 when the user enters the
     // traditional a.rtmp.youtube.com/live2 address. This avoids TCP/1935
     // connectivity problems on some mobile networks.
