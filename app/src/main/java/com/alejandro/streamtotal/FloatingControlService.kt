@@ -19,6 +19,8 @@ import android.widget.TextView
 class FloatingControlService : Service() {
     private var windowManager: WindowManager? = null
     private var root: LinearLayout? = null
+    private var bubble: TextView? = null
+    private var panel: LinearLayout? = null
     private var statusText: TextView? = null
     private var bitrateText: TextView? = null
 
@@ -52,11 +54,14 @@ class FloatingControlService : Service() {
         }
     }
 
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
+
     private fun showOverlay() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         statusText = TextView(this).apply {
-            text = "Conectando…"
+            text = "🔴 EN VIVO"
             setTextColor(Color.WHITE)
             textSize = 13f
         }
@@ -65,6 +70,7 @@ class FloatingControlService : Service() {
             setTextColor(Color.LTGRAY)
             textSize = 11f
         }
+
         val stopButton = Button(this).apply {
             text = "DETENER"
             textSize = 11f
@@ -76,13 +82,38 @@ class FloatingControlService : Service() {
             }
         }
 
-        root = LinearLayout(this).apply {
+        panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 10, 18, 8)
+            setPadding(dp(14), dp(8), dp(14), dp(6))
             setBackgroundColor(Color.argb(235, 28, 23, 38))
             addView(statusText, LinearLayout.LayoutParams(-2, -2))
             addView(bitrateText, LinearLayout.LayoutParams(-2, -2))
-            addView(stopButton, LinearLayout.LayoutParams(-1, 42))
+            addView(stopButton, LinearLayout.LayoutParams(dp(120), dp(40)))
+            visibility = android.view.View.GONE
+        }
+
+        bubble = TextView(this).apply {
+            text = "🔴"
+            gravity = Gravity.CENTER
+            textSize = 22f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(235, 120, 30, 45))
+            setOnClickListener {
+                panel?.visibility =
+                    if (panel?.visibility == android.view.View.VISIBLE)
+                        android.view.View.GONE
+                    else
+                        android.view.View.VISIBLE
+            }
+        }
+
+        root = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            setBackgroundColor(Color.TRANSPARENT)
+            addView(panel, LinearLayout.LayoutParams(dp(150), -2))
+            addView(bubble, LinearLayout.LayoutParams(dp(54), dp(54)))
         }
 
         val params = WindowManager.LayoutParams(
@@ -97,8 +128,8 @@ class FloatingControlService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = 12
-            y = 90
+            x = dp(6)
+            y = dp(140)
         }
 
         try {
@@ -112,6 +143,8 @@ class FloatingControlService : Service() {
         try { unregisterReceiver(receiver) } catch (_: Exception) {}
         try { root?.let { windowManager?.removeView(it) } } catch (_: Exception) {}
         root = null
+        panel = null
+        bubble = null
         windowManager = null
         super.onDestroy()
     }
