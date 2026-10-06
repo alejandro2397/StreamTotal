@@ -305,24 +305,51 @@ private fun StudioScreen() {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF6F5FA))) {
-        Row(
-            Modifier.fillMaxWidth().background(Color(0xFF171321)).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Column(Modifier.fillMaxSize().background(Color(0xFFF7F7FA))) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 2.dp
         ) {
-            Column(Modifier.weight(1f)) {
-                Text("StreamTotal", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                Text(
-                    if (isStreaming) "● EN VIVO" else "Centro de transmisión",
-                    color = if (isStreaming) Color(0xFFFF4D67) else Color.LightGray
-                )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(modifier = Modifier.size(44.dp), shape = RoundedCornerShape(14.dp), color = StreamPurple) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("S", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("StreamTotal", style = MaterialTheme.typography.titleLarge, color = Color(0xFF19171F))
+                    Text(
+                        if (isStreaming) "Transmitiendo ahora" else "Tu centro de creación",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isStreaming) StreamDanger else Color(0xFF77727F)
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = if (isStreaming) Color(0xFFFFE8EC) else Color(0xFFF0EDF5)
+                ) {
+                    Row(Modifier.padding(horizontal = 11.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (isStreaming) "●" else "○", color = if (isStreaming) StreamDanger else Color(0xFF8B8594))
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            if (isStreaming) formatTime(elapsed) else "LISTO",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isStreaming) StreamDanger else Color(0xFF66616E)
+                        )
+                    }
+                }
             }
-            Text(if (isStreaming) formatTime(elapsed) else "00:00", color = Color.White)
         }
 
         Box(
-            Modifier.fillMaxWidth().height(280.dp)
-                .background(Color.Black, RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp)
+                .height(270.dp)
+                .background(Color(0xFF111014), RoundedCornerShape(24.dp))
         ) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -355,11 +382,27 @@ private fun StudioScreen() {
         }
 
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("EN VIVO", "🌐 REDES", "🎮 GAMING", "ESCENAS", "AJUSTES").forEach { item ->
-                FilterChip(tab == item, { tab = item }, label = { Text(item) })
+            listOf(
+                "EN VIVO" to "▶",
+                "🌐 REDES" to "●",
+                "🎮 GAMING" to "⚡",
+                "ESCENAS" to "◆",
+                "AJUSTES" to "⚙"
+            ).forEach { item ->
+                FilterChip(
+                    selected = tab == item.first,
+                    onClick = { tab = item.first },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = StreamPurple,
+                        selectedLabelColor = Color.White,
+                        containerColor = Color.White
+                    ),
+                    label = { Text(item.second + "  " + item.first.removePrefix("🌐 ").removePrefix("🎮 ")) }
+                )
             }
         }
 
@@ -613,31 +656,49 @@ private fun LivePanel(
     onStart: () -> Unit, onStop: () -> Unit, onMute: () -> Unit,
     onSwitch: () -> Unit, onRecord: () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-        OutlinedTextField(destination1, onDestination1, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Destino RTMP principal") })
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
+        Text("Transmisión", style = MaterialTheme.typography.headlineSmall, color = Color(0xFF1D1A22))
+        Text(
+            if (isStreaming) "Estás en vivo. Puedes controlar la emisión desde la burbuja."
+            else "Configura tu destino y empieza en un toque.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF77727F)
+        )
+        Spacer(Modifier.height(12.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White,
+            tonalElevation = 1.dp
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                OutlinedTextField(destination1, onDestination1, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Servidor RTMP") })
         Spacer(Modifier.height(7.dp))
-        OutlinedTextField(destination2, onDestination2, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Segundo destino (opcional)") })
-        Spacer(Modifier.height(7.dp))
-        OutlinedTextField(title, onTitle, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Título") })
-        Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(destination2, onDestination2, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Segundo destino · opcional") })
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(title, onTitle, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Título de la transmisión") })
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onSwitch, enabled = !isStreaming, modifier = Modifier.weight(1f)) { Text("↔ Cámara") }
-            OutlinedButton(onClick = onMute, modifier = Modifier.weight(1f)) { Text(if (muted) "🎙 Activar" else "🔇 Silenciar") }
-            OutlinedButton(onClick = onRecord, enabled = isStreaming, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = onSwitch, enabled = !isStreaming, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text("↔ Cámara") }
+            OutlinedButton(onClick = onMute, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text(if (muted) "🎙 Activar" else "🔇 Silenciar") }
+            OutlinedButton(onClick = onRecord, enabled = isStreaming, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) {
                 Text(if (isRecording) "⏹ Rec" else "⏺ Rec")
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Button(
             onClick = if (isStreaming) onStop else onStart,
-            modifier = Modifier.fillMaxWidth().height(58.dp),
+            modifier = Modifier.fillMaxWidth().height(62.dp),
             shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (isStreaming) StreamDanger else StreamPurple)
         ) {
-            Text(if (isStreaming) "⏹ DETENER TRANSMISIÓN" else "🔴 INICIAR TRANSMISIÓN")
+            Text(if (isStreaming) "⏹  DETENER TRANSMISIÓN" else "🔴  INICIAR LIVE", style = MaterialTheme.typography.titleMedium)
         }
         Spacer(Modifier.height(8.dp))
-        Text("Puedes enviar la misma cámara a dos destinos RTMP.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Text("Diseñado para transmitir rápido, sin menús complicados.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A8591))
     }
 }
 
