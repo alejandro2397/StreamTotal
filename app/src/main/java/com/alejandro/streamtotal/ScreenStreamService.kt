@@ -9,7 +9,9 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MixAudioSource
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
@@ -127,6 +129,14 @@ class ScreenStreamService : Service(), ConnectChecker {
 
             broadcastStatus("Captura lista · conectando RTMP…")
             updateNotification("Conectando al servidor RTMP…")
+            if (Settings.canDrawOverlays(this)) {
+                try {
+                    ContextCompat.startForegroundService(
+                        this,
+                        Intent(this, FloatingControlService::class.java)
+                    )
+                } catch (_: Exception) {}
+            }
             stream!!.startStream(url)
         } catch (e: Exception) {
             stopWithMessage("Error al iniciar: " + (e.message ?: "captura no disponible"))
@@ -153,6 +163,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     private fun stopScreenStream() {
+        try { stopService(Intent(this, FloatingControlService::class.java)) } catch (_: Exception) {}
         try { stream?.stopStream() } catch (_: Exception) {}
         try { stream?.release() } catch (_: Exception) {}
         stream = null
@@ -204,6 +215,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onDestroy() {
+        try { stopService(Intent(this, FloatingControlService::class.java)) } catch (_: Exception) {}
         try { stream?.stopStream() } catch (_: Exception) {}
         try { stream?.release() } catch (_: Exception) {}
         try { projection?.stop() } catch (_: Exception) {}
