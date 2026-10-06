@@ -184,6 +184,24 @@ class ScreenStreamService : Service(), ConnectChecker {
         .setSilent(true)
         .setOnlyAlertOnce(true)
         .setCategory(NotificationCompat.CATEGORY_SERVICE)
+        .setStyle(
+            NotificationCompat.BigTextStyle()
+                .bigText("🔴 Estás transmitiendo con StreamTotal.\n$text")
+        )
+        .addAction(
+            android.R.drawable.ic_media_play,
+            "🎮 IR AL JUEGO",
+            PendingIntent.getActivity(
+                this,
+                4109,
+                Intent().apply {
+                    setPackage("com.dts.freefireth")
+                    component = packageManager.getLaunchIntentForPackage("com.dts.freefireth")?.component
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        )
         .addAction(
             android.R.drawable.ic_menu_close_clear_cancel,
             "DETENER",
