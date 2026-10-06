@@ -80,16 +80,52 @@ private fun securePreferences(context: Context): android.content.SharedPreferenc
 
 @Composable
 private fun PermissionScreen(onRequest: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF7F7FA)),
+        contentAlignment = Alignment.Center
     ) {
-        Text("StreamTotal", style = MaterialTheme.typography.headlineLarge)
-        Spacer(Modifier.height(10.dp))
-        Text("Permite cámara y micrófono para preparar tu transmisión.")
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = StreamPurple), modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) { Text("PERMITIR ACCESO") }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(modifier = Modifier.size(82.dp), shape = RoundedCornerShape(26.dp), color = StreamPurple) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("S", color = Color.White, style = MaterialTheme.typography.displaySmall)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Text("StreamTotal", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF19171F))
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Tu cámara. Tu juego. Tu transmisión.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFF77727F)
+            )
+            Spacer(Modifier.height(26.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = Color.White,
+                tonalElevation = 1.dp
+            ) {
+                Column(Modifier.padding(20.dp)) {
+                    Text("Listo para comenzar", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Necesitamos acceso a la cámara y al micrófono para preparar tus transmisiones.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF77727F)
+                    )
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Button(
+                onClick = onRequest,
+                colors = ButtonDefaults.buttonColors(containerColor = StreamPurple),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(17.dp)
+            ) { Text("PERMITIR Y CONTINUAR", style = MaterialTheme.typography.titleMedium) }
+        }
     }
 }
 
