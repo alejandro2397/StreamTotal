@@ -49,7 +49,7 @@ class ScreenStreamService : Service(), ConnectChecker {
             ACTION_START -> startScreenStream(intent)
             ACTION_STOP -> stopScreenStream()
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun startScreenStream(intent: Intent) {
