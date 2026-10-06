@@ -11,7 +11,6 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MixAudioSource
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
@@ -131,10 +130,7 @@ class ScreenStreamService : Service(), ConnectChecker {
             updateNotification("Conectando al servidor RTMP…")
             if (Settings.canDrawOverlays(this)) {
                 try {
-                    ContextCompat.startService(
-                        this,
-                        Intent(this, FloatingControlService::class.java)
-                    )
+                    startService(Intent(this, FloatingControlService::class.java))
                 } catch (_: Exception) {}
             }
             stream!!.startStream(url)
