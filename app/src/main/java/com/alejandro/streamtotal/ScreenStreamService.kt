@@ -131,7 +131,7 @@ class ScreenStreamService : Service(), ConnectChecker {
             updateNotification("Conectando al servidor RTMP…")
             if (Settings.canDrawOverlays(this)) {
                 try {
-                    ContextCompat.startForegroundService(
+                    ContextCompat.startService(
                         this,
                         Intent(this, FloatingControlService::class.java)
                     )
