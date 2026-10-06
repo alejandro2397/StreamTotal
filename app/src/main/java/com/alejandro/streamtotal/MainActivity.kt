@@ -2,6 +2,7 @@ package com.alejandro.streamtotal
 
 import android.Manifest
 import android.content.Context
+import android.content.res.Resources
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -348,7 +349,7 @@ private fun StudioScreen() {
             shadowElevation = 2.dp
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (compactUi()) 10.dp else 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(modifier = Modifier.size(44.dp), shape = RoundedCornerShape(14.dp), color = StreamPurple) {
@@ -384,7 +385,7 @@ private fun StudioScreen() {
 
         Box(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
-                .heightIn(min = 190.dp, max = 270.dp)
+                .heightIn(min = if (compactUi()) 165.dp else 190.dp, max = if (compactUi()) 210.dp else 270.dp)
                 .aspectRatio(16f / 9f, matchHeightConstraintsFirst = false)
                 .background(Color(0xFF111014), RoundedCornerShape(22.dp))
         ) {
@@ -419,7 +420,7 @@ private fun StudioScreen() {
         }
 
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 2.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 1.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             listOf(
@@ -698,7 +699,7 @@ private fun LivePanel(
     onStart: () -> Unit, onStop: () -> Unit, onMute: () -> Unit,
     onSwitch: () -> Unit, onRecord: () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
         Text("Transmisión", style = MaterialTheme.typography.headlineSmall, color = Color(0xFF1D1A22))
         Text(
             if (isStreaming) "Estás en vivo. Puedes controlar la emisión desde la burbuja."
@@ -1118,6 +1119,9 @@ private val StreamCyan = Color(0xFF00A8D6)
 private val StreamDanger = Color(0xFFE63B5B)
 private val StreamSuccess = Color(0xFF19A974)
 private val StreamBackground = Color(0xFFF5F3F9)
+
+// Responsive sizing: keeps controls reachable on compact phones such as ZTE Blade A56.
+private fun compactUi(): Boolean = Resources.getSystem().displayMetrics.heightPixels < 1800
 
 @Composable
 private fun StreamTotalTheme(content: @Composable () -> Unit) {
