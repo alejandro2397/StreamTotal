@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application android:allowBackup="true" android:label="StreamTotal" android:supportsRtl="true" android:theme="@style/Theme.StreamTotal" android:enableOnBackInvokedCallback="true">
         <service android:name=".ScreenStreamService" android:exported="false" android:foregroundServiceType="mediaProjection|microphone" />
+        <service android:name=".FloatingControlService" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
