@@ -383,9 +383,10 @@ private fun StudioScreen() {
         }
 
         Box(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp)
-                .height(270.dp)
-                .background(Color(0xFF111014), RoundedCornerShape(24.dp))
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
+                .heightIn(min = 190.dp, max = 270.dp)
+                .aspectRatio(16f / 9f, matchHeightConstraintsFirst = false)
+                .background(Color(0xFF111014), RoundedCornerShape(22.dp))
         ) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -418,8 +419,8 @@ private fun StudioScreen() {
         }
 
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             listOf(
                 "EN VIVO" to "▶",
@@ -442,6 +443,10 @@ private fun StudioScreen() {
             }
         }
 
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(bottom = 24.dp)
+        ) {
         when (tab) {
             "EN VIVO" -> LivePanel(
                 destination1, { destination1 = it },
@@ -599,6 +604,7 @@ private fun StudioScreen() {
                 onBitrateDown = { camera?.setVideoBitrateOnFly(1_500_000) },
                 onBitrateUp = { camera?.setVideoBitrateOnFly(5_000_000) }
             )
+        }
         }
     }
 }
