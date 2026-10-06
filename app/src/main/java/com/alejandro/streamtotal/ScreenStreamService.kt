@@ -2,6 +2,7 @@ package com.alejandro.streamtotal
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -177,11 +178,22 @@ class ScreenStreamService : Service(), ConnectChecker {
 
     private fun notification(text: String) = NotificationCompat.Builder(this, CHANNEL_ID)
         .setSmallIcon(android.R.drawable.ic_media_play)
-        .setContentTitle("StreamTotal Gaming")
+        .setContentTitle("🔴 StreamTotal · EN VIVO")
         .setContentText(text)
         .setOngoing(true)
         .setSilent(true)
         .setOnlyAlertOnce(true)
+        .setCategory(NotificationCompat.CATEGORY_SERVICE)
+        .addAction(
+            android.R.drawable.ic_menu_close_clear_cancel,
+            "DETENER",
+            PendingIntent.getService(
+                this,
+                4108,
+                Intent(this, ScreenStreamService::class.java).setAction(ACTION_STOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        )
         .build()
 
     private fun broadcastStatus(text: String, bitrate: Long? = null) {
