@@ -62,7 +62,13 @@ class MainActivity : ComponentActivity() {
                 if (permissionsGranted) StudioScreen()
                 else PermissionScreen {
                     permissionLauncher.launch(
-                        arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+                        buildList {
+                            add(Manifest.permission.CAMERA)
+                            add(Manifest.permission.RECORD_AUDIO)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                add(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        }.toTypedArray()
                     )
                 }
             }
