@@ -170,6 +170,8 @@ private fun StudioScreen() {
     var connectedYouTube by remember { mutableStateOf(prefs.getBoolean("connectedYouTube", false)) }
     var connectedTwitch by remember { mutableStateOf(prefs.getBoolean("connectedTwitch", false)) }
     var connectedKick by remember { mutableStateOf(prefs.getBoolean("connectedKick", false)) }
+    var requestGamingProjection by remember { mutableStateOf(false) }
+
     val gamingProjectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val gamingUrl = buildRtmpEndpoint(gamingServer, gamingKey)
         if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null && gamingUrl.isNotBlank()) {
@@ -181,6 +183,11 @@ private fun StudioScreen() {
                 putExtra(ScreenStreamService.EXTRA_INTERNAL_AUDIO, gamingAudio)
                 putExtra(ScreenStreamService.EXTRA_QUALITY, gamingQuality)
             }
+            if (Settings.canDrawOverlays(context)) {
+                try {
+                    context.startService(Intent(context, FloatingControlService::class.java))
+                } catch (_: Exception) {}
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ContextCompat.startForegroundService(context, intent) else context.startService(intent)
             gamingRunning = true
             gamingStartedAt = SystemClock.elapsedRealtime()
@@ -189,6 +196,22 @@ private fun StudioScreen() {
             gamingBitrate = "—"
         }
     }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        requestGamingProjection = true
+    }
+
+    LaunchedEffect(requestGamingProjection) {
+        if (requestGamingProjection) {
+            requestGamingProjection = false
+            gamingProjectionLauncher.launch(
+                (context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager)
+                    .createScreenCaptureIntent()
+            )
+        }
+    }
+
     var camera: MultiCamera2? by remember { mutableStateOf(null) }
 
     LaunchedEffect(gamingRunning) {
@@ -468,14 +491,16 @@ private fun StudioScreen() {
                         gamingStatus = "Activa Permitir mostrar sobre otras apps"
                         val overlayIntent = Intent(
                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${context.packageName}")
+                            Uri.parse("package:" + context.packageName)
                         )
                         context.startActivity(overlayIntent)
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        gamingStatus = "Permite las notificaciones para ver el estado EN VIVO"
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
-                        gamingProjectionLauncher.launch(
-                            (context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager)
-                                .createScreenCaptureIntent()
-                        )
+                        requestGamingProjection = true
                     }
                 },
                 onStop = {
