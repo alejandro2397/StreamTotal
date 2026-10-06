@@ -2,7 +2,6 @@ package com.alejandro.streamtotal
 
 import android.Manifest
 import android.content.Context
-import android.content.res.Resources
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -1121,7 +1120,7 @@ private val StreamSuccess = Color(0xFF19A974)
 private val StreamBackground = Color(0xFFF5F3F9)
 
 // Responsive sizing: keeps controls reachable on compact phones such as ZTE Blade A56.
-private fun compactUi(): Boolean = Resources.getSystem().displayMetrics.heightPixels < 1800
+private fun compactUi(): Boolean = false
 
 @Composable
 private fun StreamTotalTheme(content: @Composable () -> Unit) {
