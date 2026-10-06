@@ -168,6 +168,8 @@ private fun StudioScreen() {
 
     var destination1 by remember { mutableStateOf(prefs.getString("rtmp1", "") ?: "") }
     var destination2 by remember { mutableStateOf(prefs.getString("rtmp2", "") ?: "") }
+    var streamKey1 by remember { mutableStateOf(prefs.getString("streamKey1", "") ?: "") }
+    var streamKey2 by remember { mutableStateOf(prefs.getString("streamKey2", "") ?: "") }
     var title by remember { mutableStateOf(prefs.getString("title", "Mi transmisión") ?: "Mi transmisión") }
     var quality by remember { mutableStateOf(prefs.getString("quality", "720p") ?: "720p") }
     var tab by remember { mutableStateOf("EN VIVO") }
@@ -293,6 +295,8 @@ private fun StudioScreen() {
         prefs.edit()
             .putString("rtmp1", destination1)
             .putString("rtmp2", destination2)
+            .putString("streamKey1", streamKey1)
+            .putString("streamKey2", streamKey2)
             .putString("title", title)
             .putString("quality", quality)
             .apply()
@@ -456,8 +460,8 @@ private fun StudioScreen() {
                 isStreaming, isRecording, muted,
                 onStart = {
                     saveSettings()
-                    val url1 = destination1.trim()
-                    val url2 = destination2.trim()
+                    val url1 = buildRtmpEndpoint(destination1, streamKey1)
+                    val url2 = buildRtmpEndpoint(destination2, streamKey2)
                     val multi = camera
                     if (url1.isEmpty() || multi == null) {
                         status = "Introduce el destino RTMP principal"
@@ -524,10 +528,13 @@ private fun StudioScreen() {
                     saveSettings()
                 },
                 onKey = { value ->
-                    val server = if (socialSlot == 1) destination1 else destination2
-                    val full = if (value.isBlank()) server else if (server.endsWith("/")) server + value.trim() else "$server/\${value.trim()}"
-                    if (socialSlot == 1) destination1 = full else destination2 = full
-                    prefs.edit().putString("streamKey$socialSlot", value).apply()
+                    if (socialSlot == 1) {
+                        streamKey1 = value
+                        prefs.edit().putString("streamKey1", value).apply()
+                    } else {
+                        streamKey2 = value
+                        prefs.edit().putString("streamKey2", value).apply()
+                    }
                 },
                 onApply = {
                     saveSettings()
