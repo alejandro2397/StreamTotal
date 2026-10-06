@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.media.projection.MediaProjectionManager
@@ -462,7 +463,21 @@ private fun StudioScreen() {
                 onMultiDestinations = { multiDestinations = it; prefs.edit().putBoolean("multiDestinations", it).apply() },
                 destinationCount = destinationCount,
                 onDestinationCount = { destinationCount = it.coerceIn(1, 4); prefs.edit().putInt("destinationCount", destinationCount).apply() },
-                onStart = { gamingProjectionLauncher.launch((context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager).createScreenCaptureIntent()) },
+                onStart = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+                        gamingStatus = "Activa Permitir mostrar sobre otras apps"
+                        val overlayIntent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:${context.packageName}")
+                        )
+                        context.startActivity(overlayIntent)
+                    } else {
+                        gamingProjectionLauncher.launch(
+                            (context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager)
+                                .createScreenCaptureIntent()
+                        )
+                    }
+                },
                 onStop = {
                     context.startService(Intent(context, ScreenStreamService::class.java).setAction(ScreenStreamService.ACTION_STOP))
                     gamingRunning = false
