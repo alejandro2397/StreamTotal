@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.view.MotionEvent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -23,6 +25,11 @@ class FloatingControlService : Service() {
     private var panel: LinearLayout? = null
     private var statusText: TextView? = null
     private var bitrateText: TextView? = null
+    private var downX = 0f
+    private var downY = 0f
+    private var startX = 0
+    private var startY = 0
+    private var moved = false
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -71,6 +78,13 @@ class FloatingControlService : Service() {
             textSize = 11f
         }
 
+        val gameButton = Button(this).apply {
+            text = "🎮  IR AL JUEGO"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            setOnClickListener { launchFreeFire() }
+        }
+
         val stopButton = Button(this).apply {
             text = "DETENER"
             textSize = 11f
@@ -88,6 +102,7 @@ class FloatingControlService : Service() {
             setBackgroundColor(Color.argb(235, 28, 23, 38))
             addView(statusText, LinearLayout.LayoutParams(-2, -2))
             addView(bitrateText, LinearLayout.LayoutParams(-2, -2))
+            addView(gameButton, LinearLayout.LayoutParams(dp(145), dp(38)))
             addView(stopButton, LinearLayout.LayoutParams(dp(120), dp(40)))
             visibility = android.view.View.GONE
         }
@@ -97,14 +112,12 @@ class FloatingControlService : Service() {
             gravity = Gravity.CENTER
             textSize = 22f
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.argb(235, 120, 30, 45))
-            setOnClickListener {
-                panel?.visibility =
-                    if (panel?.visibility == android.view.View.VISIBLE)
-                        android.view.View.GONE
-                    else
-                        android.view.View.VISIBLE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(190, 35, 58))
+                setStroke(dp(2), Color.argb(220, 255, 255, 255))
             }
+            elevation = dp(8).toFloat()
         }
 
         root = LinearLayout(this).apply {
@@ -112,8 +125,8 @@ class FloatingControlService : Service() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(4))
             setBackgroundColor(Color.TRANSPARENT)
-            addView(panel, LinearLayout.LayoutParams(dp(150), -2))
-            addView(bubble, LinearLayout.LayoutParams(dp(54), dp(54)))
+            addView(panel, LinearLayout.LayoutParams(dp(155), -2))
+            addView(bubble, LinearLayout.LayoutParams(dp(58), dp(58)))
         }
 
         val params = WindowManager.LayoutParams(
@@ -132,10 +145,41 @@ class FloatingControlService : Service() {
             y = dp(140)
         }
 
+        bubble?.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX; downY = event.rawY
+                    startX = params.x; startY = params.y; moved = false; true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - downX).toInt()
+                    val dy = (event.rawY - downY).toInt()
+                    if (kotlin.math.abs(dx) > dp(4) || kotlin.math.abs(dy) > dp(4)) moved = true
+                    params.x = startX - dx
+                    params.y = startY + dy
+                    try { windowManager?.updateViewLayout(root, params) } catch (_: Exception) {}
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!moved) panel?.visibility =
+                        if (panel?.visibility == android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
+                    true
+                }
+                else -> true
+            }
+        }
+
         try {
             windowManager?.addView(root, params)
         } catch (_: Exception) {
             stopSelf()
+        }
+    }
+
+    private fun launchFreeFire() {
+        listOf("com.dts.freefireth", "com.dts.freefiremax").forEach { pkg ->
+            val launch = packageManager.getLaunchIntentForPackage(pkg)
+            if (launch != null) { launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(launch); return }
         }
     }
 
