@@ -980,9 +980,28 @@ private fun AccountConnectRow(
 }
 
 private fun buildRtmpEndpoint(server: String, key: String): String {
-    val cleanServer = server.trim().trimEnd('/')
+    var cleanServer = server.trim().trimEnd('/')
     val cleanKey = key.trim().trim('/')
     if (cleanServer.isBlank() || cleanKey.isBlank()) return ""
+
+    // YouTube: use encrypted RTMPS over 443 when the user enters the
+    // traditional a.rtmp.youtube.com/live2 address. This avoids TCP/1935
+    // connectivity problems on some mobile networks.
+    val youtubeHost = cleanServer
+        .removePrefix("rtmp://")
+        .removePrefix("rtmps://")
+        .substringBefore("/")
+        .substringBefore(":")
+        .equals("a.rtmp.youtube.com", ignoreCase = true)
+
+    if (youtubeHost && cleanServer.startsWith("rtmp://", ignoreCase = true)) {
+        cleanServer = "rtmps://a.rtmp.youtube.com:443/live2"
+    } else if (youtubeHost && cleanServer.startsWith("rtmps://", ignoreCase = true) &&
+        !cleanServer.contains(":443/")
+    ) {
+        cleanServer = "rtmps://a.rtmp.youtube.com:443/live2"
+    }
+
     return "$cleanServer/$cleanKey"
 }
 
