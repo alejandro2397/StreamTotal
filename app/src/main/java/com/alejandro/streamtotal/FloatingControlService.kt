@@ -95,7 +95,10 @@ class FloatingControlService : Service() {
             setTextColor(Color.WHITE)
             setOnClickListener {
                 try {
-                    stopService(Intent(this@FloatingControlService, ScreenStreamService::class.java))
+                    val stopIntent = Intent(this@FloatingControlService, ScreenStreamService::class.java).apply {
+                        action = ScreenStreamService.ACTION_STOP
+                    }
+                    startService(stopIntent)
                     stopSelf()
                 } catch (_: Exception) {}
             }
