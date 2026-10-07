@@ -132,7 +132,12 @@ class ScreenStreamService : Service(), ConnectChecker {
             if (Settings.canDrawOverlays(this)) {
                 try {
                     startService(Intent(this, FloatingControlService::class.java))
-                } catch (_: Exception) {}
+                    broadcastStatus("🔴 Control flotante activo · conectando…")
+                } catch (e: Exception) {
+                    broadcastStatus("⚠️ No se pudo mostrar el control flotante")
+                }
+            } else {
+                broadcastStatus("⚠️ Permiso de superposición no activo")
             }
             stream!!.startStream(url)
         } catch (e: Exception) {
