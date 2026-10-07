@@ -84,7 +84,9 @@ class FloatingControlService : Service() {
             text = "🎮  IR AL JUEGO"
             textSize = 11f
             setTextColor(Color.WHITE)
-            setOnClickListener { launchFreeFire() }
+            setOnClickListener {
+                    launchFreeFire()
+                }
         }
 
         val stopButton = Button(this).apply {
@@ -92,9 +94,10 @@ class FloatingControlService : Service() {
             textSize = 11f
             setTextColor(Color.WHITE)
             setOnClickListener {
-                startService(Intent(this@FloatingControlService, ScreenStreamService::class.java).apply {
-                    action = ScreenStreamService.ACTION_STOP
-                })
+                try {
+                    stopService(Intent(this@FloatingControlService, ScreenStreamService::class.java))
+                    stopSelf()
+                } catch (_: Exception) {}
             }
         }
 
@@ -180,10 +183,18 @@ class FloatingControlService : Service() {
     }
 
     private fun launchFreeFire() {
-        listOf("com.dts.freefireth", "com.dts.freefiremax").forEach { pkg ->
-            val launch = packageManager.getLaunchIntentForPackage(pkg)
-            if (launch != null) { launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(launch); return }
+        val packages = listOf("com.dts.freefireth", "com.dts.freefiremax")
+        for (pkg in packages) {
+            try {
+                val launch = packageManager.getLaunchIntentForPackage(pkg)
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(launch)
+                    return
+                }
+            } catch (_: Exception) {}
         }
+        statusText?.text = "⚠️ Free Fire no instalado"
     }
 
     override fun onDestroy() {
