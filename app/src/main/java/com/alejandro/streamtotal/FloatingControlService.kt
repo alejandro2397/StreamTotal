@@ -186,18 +186,22 @@ class FloatingControlService : Service() {
     }
 
     private fun launchFreeFire() {
-        val packages = listOf("com.dts.freefireth", "com.dts.freefiremax")
+        val packages = listOf("com.dts.freefiremax", "com.dts.freefireth")
         for (pkg in packages) {
             try {
-                val launch = packageManager.getLaunchIntentForPackage(pkg)
-                if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val launch = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    setPackage(pkg)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                }
+                val activities = packageManager.queryIntentActivities(launch, 0)
+                if (activities.isNotEmpty()) {
                     startActivity(launch)
                     return
                 }
             } catch (_: Exception) {}
         }
-        statusText?.text = "⚠️ Free Fire no instalado"
+        statusText?.text = "⚠️ No se encontró Free Fire"
     }
 
     override fun onDestroy() {
