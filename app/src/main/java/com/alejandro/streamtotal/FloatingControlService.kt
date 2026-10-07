@@ -186,22 +186,37 @@ class FloatingControlService : Service() {
     }
 
     private fun launchFreeFire() {
-        val packages = listOf("com.dts.freefiremax", "com.dts.freefireth")
-        for (pkg in packages) {
-            try {
-                val launch = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    setPackage(pkg)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                }
-                val activities = packageManager.queryIntentActivities(launch, 0)
-                if (activities.isNotEmpty()) {
-                    startActivity(launch)
-                    return
-                }
-            } catch (_: Exception) {}
-        }
-        statusText?.text = "⚠️ No se encontró Free Fire"
+        try {
+            val launch = Intent().apply {
+                component = android.content.ComponentName(
+                    "com.dts.freefiremax",
+                    "com.dts.freefireth.FFMainActivity"
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(launch)
+            return
+        } catch (_: Exception) {}
+
+        try {
+            val launch = packageManager.getLaunchIntentForPackage("com.dts.freefiremax")
+            if (launch != null) {
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(launch)
+                return
+            }
+        } catch (_: Exception) {}
+
+        try {
+            val launch = packageManager.getLaunchIntentForPackage("com.dts.freefireth")
+            if (launch != null) {
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(launch)
+                return
+            }
+        } catch (_: Exception) {}
+
+        statusText?.text = "⚠️ No se pudo abrir Free Fire"
     }
 
     override fun onDestroy() {
