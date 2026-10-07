@@ -92,7 +92,6 @@ class ScreenStreamService : Service(), ConnectChecker {
             projection = manager.getMediaProjection(resultCode, data)
                 ?: throw IllegalStateException("Android no entregó la proyección de pantalla")
 
-            val screen = ScreenSource(applicationContext, projection!!)
             stream?.stopStream()
             stream?.release()
 
@@ -120,7 +119,13 @@ class ScreenStreamService : Service(), ConnectChecker {
                 return
             }
 
-            stream!!.changeVideoSource(screen)
+            val screen = ScreenSource(applicationContext, projection!!)
+            try {
+                stream!!.changeVideoSource(screen)
+            } catch (e: IllegalArgumentException) {
+                stopWithMessage("Android no pudo preparar la captura de pantalla")
+                return
+            }
             stream!!.getStreamClient().setReTries(5)
 
             if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, false) &&
