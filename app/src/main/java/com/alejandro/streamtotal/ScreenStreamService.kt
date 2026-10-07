@@ -149,13 +149,19 @@ class ScreenStreamService : Service(), ConnectChecker {
             } else {
                 broadcastStatus("⚠️ Permiso de superposición no activo")
             }
-            stream!!.startStream(url)
+            try {
+                stream!!.startStream(url)
+            } catch (e: Exception) {
+                // A synchronous RTMP/encoder error must not destroy the screen-capture service
+                // or its floating controls. Keep the foreground service alive and report it.
+                updateNotification("⚠️ No se pudo iniciar RTMP · revisa servidor y clave")
+            }
         } catch (e: SecurityException) {
             broadcastStatus("⚠️ Android bloqueó el servicio: " + (e.message ?: "permiso requerido"))
-            stopScreenStream()
+            updateNotification("⚠️ Permiso de captura/micrófono requerido")
         } catch (e: Exception) {
-            broadcastStatus("⚠️ Error al iniciar Gaming: " + (e.message ?: "captura no disponible"))
-            stopScreenStream()
+            broadcastStatus("⚠️ Error al preparar Gaming: " + (e.message ?: "captura no disponible"))
+            updateNotification("⚠️ Gaming sigue activo · captura no disponible")
         }
     }
 
