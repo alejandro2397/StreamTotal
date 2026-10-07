@@ -101,7 +101,7 @@ class ScreenStreamService : Service(), ConnectChecker {
                 NoVideoSource(),
                 MicrophoneSource()
             ).apply {
-                getGlInterface().setForceRender(true, 30)
+                getGlInterface().setForceRender(true, 15)
                 getGlInterface().setCameraOrientation(0)
             }
 
@@ -120,6 +120,7 @@ class ScreenStreamService : Service(), ConnectChecker {
             }
 
             stream!!.changeVideoSource(screen)
+            stream!!.getStreamClient().setReTries(5)
 
             if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, true) &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
