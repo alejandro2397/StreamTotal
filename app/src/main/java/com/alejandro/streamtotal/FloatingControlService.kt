@@ -45,6 +45,8 @@ class FloatingControlService : Service() {
         }
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+
     override fun onCreate() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
@@ -171,7 +173,8 @@ class FloatingControlService : Service() {
 
         try {
             windowManager?.addView(root, params)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("StreamTotalOverlay", "No se pudo mostrar la burbuja", e)
             stopSelf()
         }
     }
