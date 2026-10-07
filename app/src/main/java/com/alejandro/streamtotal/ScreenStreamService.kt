@@ -47,7 +47,10 @@ class ScreenStreamService : Service(), ConnectChecker {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startScreenStream(intent)
-            ACTION_STOP -> stopScreenStream()
+            ACTION_STOP -> {
+                try { stopService(Intent(this, FloatingControlService::class.java)) } catch (_: Exception) {}
+                stopScreenStream()
+            }
         }
         return START_STICKY
     }
@@ -176,7 +179,6 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     private fun stopScreenStream() {
-        try { stopService(Intent(this, FloatingControlService::class.java)) } catch (_: Exception) {}
         try { stream?.stopStream() } catch (_: Exception) {}
         try { stream?.release() } catch (_: Exception) {}
         stream = null
@@ -257,7 +259,6 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onDestroy() {
-        try { stopService(Intent(this, FloatingControlService::class.java)) } catch (_: Exception) {}
         try { stream?.stopStream() } catch (_: Exception) {}
         try { stream?.release() } catch (_: Exception) {}
         try { projection?.stop() } catch (_: Exception) {}
@@ -287,11 +288,13 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onConnectionFailed(reason: String) {
-        stopWithMessage("RTMP rechazado: " + reason.ifBlank { "revisa servidor y clave" })
+        broadcastStatus("⚠️ Conexión perdida · reintentando…")
+        updateNotification("⚠️ Conexión perdida · reintentando…")
     }
 
     override fun onDisconnect() {
-        stopWithMessage("Transmisión desconectada")
+        broadcastStatus("🔄 Reconectando…")
+        updateNotification("🔄 Reconectando…")
     }
 
     override fun onAuthError() {
