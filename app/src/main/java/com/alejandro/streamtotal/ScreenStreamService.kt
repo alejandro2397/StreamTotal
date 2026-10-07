@@ -78,8 +78,8 @@ class ScreenStreamService : Service(), ConnectChecker {
                     NOTIFICATION_ID,
                     notification("Preparando captura y conexión…"),
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
-                        if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, false))
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+                        (if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, false))
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0)
                 )
             } else {
                 startForeground(NOTIFICATION_ID, notification("Preparando captura y conexión…"))
