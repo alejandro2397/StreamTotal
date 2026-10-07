@@ -78,7 +78,8 @@ class ScreenStreamService : Service(), ConnectChecker {
                     NOTIFICATION_ID,
                     notification("Preparando captura y conexión…"),
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                        if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, false))
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
                 )
             } else {
                 startForeground(NOTIFICATION_ID, notification("Preparando captura y conexión…"))
@@ -122,7 +123,7 @@ class ScreenStreamService : Service(), ConnectChecker {
             stream!!.changeVideoSource(screen)
             stream!!.getStreamClient().setReTries(5)
 
-            if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, true) &&
+            if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, false) &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
             ) {
                 stream!!.changeAudioSource(MixAudioSource(projection!!))
@@ -141,8 +142,12 @@ class ScreenStreamService : Service(), ConnectChecker {
                 broadcastStatus("⚠️ Permiso de superposición no activo")
             }
             stream!!.startStream(url)
+        } catch (e: SecurityException) {
+            broadcastStatus("⚠️ Android bloqueó el servicio: " + (e.message ?: "permiso requerido"))
+            stopScreenStream()
         } catch (e: Exception) {
-            stopWithMessage("Error al iniciar: " + (e.message ?: "captura no disponible"))
+            broadcastStatus("⚠️ Error al iniciar Gaming: " + (e.message ?: "captura no disponible"))
+            stopScreenStream()
         }
     }
 
