@@ -186,37 +186,22 @@ class FloatingControlService : Service() {
     }
 
     private fun launchFreeFire() {
-        try {
-            val launch = Intent().apply {
-                component = android.content.ComponentName(
-                    "com.dts.freefiremax",
-                    "com.dts.freefireth.FFMainActivity"
-                )
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Prefer the regular Free Fire package. Do not hard-code an Activity:
+        // Garena can change the launcher Activity between game releases.
+        val packagesToTry = listOf("com.dts.freefireth", "com.dts.freefiremax")
+        for (packageName in packagesToTry) {
+            try {
+                val launch = packageManager.getLaunchIntentForPackage(packageName)
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(launch)
+                    return
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("StreamTotalOverlay", "Could not launch $packageName", e)
             }
-            startActivity(launch)
-            return
-        } catch (_: Exception) {}
-
-        try {
-            val launch = packageManager.getLaunchIntentForPackage("com.dts.freefiremax")
-            if (launch != null) {
-                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(launch)
-                return
-            }
-        } catch (_: Exception) {}
-
-        try {
-            val launch = packageManager.getLaunchIntentForPackage("com.dts.freefireth")
-            if (launch != null) {
-                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(launch)
-                return
-            }
-        } catch (_: Exception) {}
-
-        statusText?.text = "⚠️ No se pudo abrir Free Fire"
+        }
+        statusText?.text = "⚠️ Free Fire no está instalado o Android bloqueó su apertura"
     }
 
     override fun onDestroy() {
