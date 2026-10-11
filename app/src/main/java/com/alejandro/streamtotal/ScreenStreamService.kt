@@ -42,6 +42,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     private var wakeLock: PowerManager.WakeLock? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var connectionWatchdog: Runnable? = null
+    @Volatile private var connectionTimedOut = false
 
     private fun cancelConnectionWatchdog() {
         connectionWatchdog?.let { mainHandler.removeCallbacks(it) }
@@ -138,7 +139,11 @@ class ScreenStreamService : Service(), ConnectChecker {
                 stopWithMessage("Android no pudo preparar la captura de pantalla")
                 return
             }
-            stream!!.getStreamClient().setReTries(5)
+            // Bound connection attempts so a stalled RTMPS handshake cannot remain in "Connecting".
+            stream!!.getStreamClient().setSocketTimeout(12_000L)
+            stream!!.getStreamClient().setReTries(0)
+            stream!!.getStreamClient().setLogs(true)
+            connectionTimedOut = false
 
             if (intent.getBooleanExtra(EXTRA_INTERNAL_AUDIO, false) &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -161,7 +166,9 @@ class ScreenStreamService : Service(), ConnectChecker {
             try {
                 cancelConnectionWatchdog()
                 connectionWatchdog = Runnable {
-                    updateNotification("⚠️ Sin respuesta de YouTube tras 20 s. Verifica la URL RTMPS y la conexión a internet.")
+                    connectionTimedOut = true
+                    try { stream?.stopStream() } catch (_: Exception) {}
+                    updateNotification("⚠️ Tiempo de conexión agotado. No hubo respuesta de YouTube. Revisa la URL RTMPS exacta de Studio y tu internet; vuelve a intentar.")
                 }
                 mainHandler.postDelayed(connectionWatchdog!!, 20_000L)
                 stream!!.startStream(url)
@@ -292,11 +299,13 @@ class ScreenStreamService : Service(), ConnectChecker {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onConnectionStarted(url: String) {
+        connectionTimedOut = false
         broadcastStatus("Conectando al servidor de YouTube…")
         updateNotification("Conectando al servidor de YouTube…")
     }
 
     override fun onConnectionSuccess() {
+        connectionTimedOut = false
         cancelConnectionWatchdog()
         broadcastStatus("Conectado · esperando video de YouTube")
         updateNotification("Conectado · esperando video de YouTube")
@@ -313,14 +322,20 @@ class ScreenStreamService : Service(), ConnectChecker {
 
     override fun onConnectionFailed(reason: String) {
         cancelConnectionWatchdog()
+        connectionTimedOut = false
+        cancelConnectionWatchdog()
         val detail = reason.take(140).ifBlank { "YouTube no aceptó la conexión" }
         broadcastStatus("⚠️ Error RTMP: $detail")
         updateNotification("⚠️ Error RTMP: $detail")
     }
 
     override fun onDisconnect() {
-        broadcastStatus("🔄 Reconectando…")
-        updateNotification("🔄 Reconectando…")
+        if (connectionTimedOut) {
+            updateNotification("⚠️ Tiempo de conexión agotado. Revisa URL RTMPS e internet.")
+        } else {
+            broadcastStatus("🔄 Reconectando…")
+            updateNotification("🔄 Reconectando…")
+        }
     }
 
     override fun onAuthError() {
