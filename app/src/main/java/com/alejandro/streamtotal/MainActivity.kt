@@ -1097,29 +1097,13 @@ private fun AccountConnectRow(
 }
 
 private fun buildRtmpEndpoint(server: String, key: String): String {
-    var cleanServer = server.trim().trimEnd('/')
+    val cleanServer = server.trim().trimEnd('/')
     val cleanKey = key.trim().trim('/')
     if (cleanServer.isBlank() || cleanKey.isBlank()) return ""
 
-    // Build #81: YouTube RTMPS/443 connection fix.
-    // YouTube: use encrypted RTMPS over 443 when the user enters the
-    // traditional a.rtmp.youtube.com/live2 address. This avoids TCP/1935
-    // connectivity problems on some mobile networks.
-    val youtubeHost = cleanServer
-        .removePrefix("rtmp://")
-        .removePrefix("rtmps://")
-        .substringBefore("/")
-        .substringBefore(":")
-        .equals("a.rtmp.youtube.com", ignoreCase = true)
-
-    if (youtubeHost && cleanServer.startsWith("rtmp://", ignoreCase = true)) {
-        cleanServer = "rtmps://a.rtmp.youtube.com:443/live2"
-    } else if (youtubeHost && cleanServer.startsWith("rtmps://", ignoreCase = true) &&
-        !cleanServer.contains(":443/")
-    ) {
-        cleanServer = "rtmps://a.rtmp.youtube.com:443/live2"
-    }
-
+    // Keep the protocol entered by the user. RootEncoder's RTMP ingest path
+    // is the default; do not silently convert YouTube RTMP to RTMPS/443.
+    // YouTube's standard encoder endpoint is rtmp://a.rtmp.youtube.com/live2.
     return "$cleanServer/$cleanKey"
 }
 
