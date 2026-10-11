@@ -9,6 +9,8 @@ import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
@@ -38,6 +40,13 @@ class ScreenStreamService : Service(), ConnectChecker {
     private var stream: GenericStream? = null
     private var projection: android.media.projection.MediaProjection? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var connectionWatchdog: Runnable? = null
+
+    private fun cancelConnectionWatchdog() {
+        connectionWatchdog?.let { mainHandler.removeCallbacks(it) }
+        connectionWatchdog = null
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -150,6 +159,11 @@ class ScreenStreamService : Service(), ConnectChecker {
                 broadcastStatus("⚠️ Permiso de superposición no activo")
             }
             try {
+                cancelConnectionWatchdog()
+                connectionWatchdog = Runnable {
+                    updateNotification("⚠️ Sin respuesta de YouTube tras 20 s. Verifica la URL RTMPS y la conexión a internet.")
+                }
+                mainHandler.postDelayed(connectionWatchdog!!, 20_000L)
                 stream!!.startStream(url)
             } catch (e: Exception) {
                 // A synchronous RTMP/encoder error must not destroy the screen-capture service
@@ -265,6 +279,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onDestroy() {
+        cancelConnectionWatchdog()
         try { stream?.stopStream() } catch (_: Exception) {}
         try { stream?.release() } catch (_: Exception) {}
         try { projection?.stop() } catch (_: Exception) {}
@@ -282,6 +297,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onConnectionSuccess() {
+        cancelConnectionWatchdog()
         broadcastStatus("Conectado · esperando video de YouTube")
         updateNotification("Conectado · esperando video de YouTube")
     }
@@ -296,6 +312,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onConnectionFailed(reason: String) {
+        cancelConnectionWatchdog()
         val detail = reason.take(140).ifBlank { "YouTube no aceptó la conexión" }
         broadcastStatus("⚠️ Error RTMP: $detail")
         updateNotification("⚠️ Error RTMP: $detail")
@@ -307,6 +324,7 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onAuthError() {
+        cancelConnectionWatchdog()
         stopWithMessage("Clave RTMP incorrecta o no autorizada")
     }
 
