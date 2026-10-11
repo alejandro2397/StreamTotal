@@ -152,7 +152,7 @@ private val presets = listOf(
 private data class SocialPreset(val name: String, val server: String, val hint: String)
 
 private val socialPresets = listOf(
-    SocialPreset("YouTube", "rtmp://a.rtmp.youtube.com/live2/", "Clave de emisión de YouTube"),
+    SocialPreset("YouTube", "rtmps://a.rtmps.youtube.com:443/live2/", "Clave de emisión de YouTube"),
     SocialPreset("Facebook", "rtmps://live-api-s.facebook.com:443/rtmp/", "Clave de transmisión de Facebook"),
     SocialPreset("TikTok", "", "Servidor y clave proporcionados por TikTok"),
     SocialPreset("Twitch", "rtmp://live.twitch.tv/app/", "Clave de transmisión de Twitch"),
@@ -1101,10 +1101,16 @@ private fun buildRtmpEndpoint(server: String, key: String): String {
     val cleanKey = key.trim().trim('/')
     if (cleanServer.isBlank() || cleanKey.isBlank()) return ""
 
-    // Keep the protocol entered by the user. RootEncoder's RTMP ingest path
-    // is the default; do not silently convert YouTube RTMP to RTMPS/443.
-    // YouTube's standard encoder endpoint is rtmp://a.rtmp.youtube.com/live2.
-    return "$cleanServer/$cleanKey"
+    // YouTube recommends RTMPS. Convert only its known standard RTMP URL to
+    // the matching secure ingest host and port; preserve custom URLs verbatim.
+    val endpointServer = if (
+        cleanServer.equals("rtmp://a.rtmp.youtube.com/live2", ignoreCase = true)
+    ) {
+        "rtmps://a.rtmps.youtube.com:443/live2"
+    } else {
+        cleanServer
+    }
+    return "$endpointServer/$cleanKey"
 }
 
 private fun formatTime(seconds: Long): String =
