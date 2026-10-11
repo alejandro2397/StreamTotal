@@ -70,7 +70,7 @@ class FloatingControlService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         statusText = TextView(this).apply {
-            text = "🔴 EN VIVO"
+            text = "⏳ INICIANDO"
             setTextColor(Color.WHITE)
             textSize = 13f
         }
