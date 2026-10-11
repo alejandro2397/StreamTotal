@@ -20,6 +20,9 @@ import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.encoder.input.sources.video.NoVideoSource
 import com.pedro.encoder.input.sources.video.ScreenSource
 import com.pedro.library.generic.GenericStream
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 class ScreenStreamService : Service(), ConnectChecker {
     companion object {
@@ -41,11 +44,14 @@ class ScreenStreamService : Service(), ConnectChecker {
     private var projection: android.media.projection.MediaProjection? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var connectionWatchdog: Runnable? = null
+    private val watchdogExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "StreamTotal-ConnectionWatchdog").apply { isDaemon = true }
+    }
+    private var connectionWatchdog: ScheduledFuture<*>? = null
     @Volatile private var connectionTimedOut = false
 
     private fun cancelConnectionWatchdog() {
-        connectionWatchdog?.let { mainHandler.removeCallbacks(it) }
+        connectionWatchdog?.cancel(false)
         connectionWatchdog = null
     }
 
@@ -165,12 +171,11 @@ class ScreenStreamService : Service(), ConnectChecker {
             }
             try {
                 cancelConnectionWatchdog()
-                connectionWatchdog = Runnable {
+                connectionWatchdog = watchdogExecutor.schedule({
                     connectionTimedOut = true
                     try { stream?.stopStream() } catch (_: Exception) {}
-                    updateNotification("⚠️ Tiempo de conexión agotado. No hubo respuesta de YouTube. Revisa la URL RTMPS exacta de Studio y tu internet; vuelve a intentar.")
-                }
-                mainHandler.postDelayed(connectionWatchdog!!, 20_000L)
+                    updateNotification("⚠️ Tiempo de conexión agotado (20 s). No llegó respuesta de YouTube. Revisa la URL RTMPS y la red; toca DETENER y vuelve a intentar.")
+                }, 20, TimeUnit.SECONDS)
                 stream!!.startStream(url)
             } catch (e: Exception) {
                 // A synchronous RTMP/encoder error must not destroy the screen-capture service
@@ -287,6 +292,7 @@ class ScreenStreamService : Service(), ConnectChecker {
 
     override fun onDestroy() {
         cancelConnectionWatchdog()
+        watchdogExecutor.shutdownNow()
         try { stream?.stopStream() } catch (_: Exception) {}
         try { stream?.release() } catch (_: Exception) {}
         try { projection?.stop() } catch (_: Exception) {}
