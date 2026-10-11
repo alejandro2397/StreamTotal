@@ -202,7 +202,7 @@ class ScreenStreamService : Service(), ConnectChecker {
 
     private fun notification(text: String) = NotificationCompat.Builder(this, CHANNEL_ID)
         .setSmallIcon(android.R.drawable.ic_media_play)
-        .setContentTitle("🔴 StreamTotal · EN VIVO")
+        .setContentTitle("StreamTotal · Gaming")
         .setContentText(text)
         .setOngoing(true)
         .setSilent(true)
@@ -210,7 +210,7 @@ class ScreenStreamService : Service(), ConnectChecker {
         .setCategory(NotificationCompat.CATEGORY_SERVICE)
         .setStyle(
             NotificationCompat.BigTextStyle()
-                .bigText("🔴 Estás transmitiendo con StreamTotal.\n$text")
+                .bigText("Estado de StreamTotal Gaming.\n$text")
         )
         .addAction(
             android.R.drawable.ic_media_play,
@@ -277,11 +277,13 @@ class ScreenStreamService : Service(), ConnectChecker {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onConnectionStarted(url: String) {
-        updateNotification("Conectando al servidor…")
+        broadcastStatus("Conectando al servidor de YouTube…")
+        updateNotification("Conectando al servidor de YouTube…")
     }
 
     override fun onConnectionSuccess() {
-        updateNotification("🔴 StreamTotal Gaming · EN VIVO")
+        broadcastStatus("Conectado · esperando video de YouTube")
+        updateNotification("Conectado · esperando video de YouTube")
     }
 
     override fun onNewBitrate(bitrate: Long) {
@@ -294,8 +296,9 @@ class ScreenStreamService : Service(), ConnectChecker {
     }
 
     override fun onConnectionFailed(reason: String) {
-        broadcastStatus("⚠️ Conexión perdida · reintentando…")
-        updateNotification("⚠️ Conexión perdida · reintentando…")
+        val detail = reason.take(140).ifBlank { "YouTube no aceptó la conexión" }
+        broadcastStatus("⚠️ Error RTMP: $detail")
+        updateNotification("⚠️ Error RTMP: $detail")
     }
 
     override fun onDisconnect() {
