@@ -171,10 +171,15 @@ class ScreenStreamService : Service(), ConnectChecker {
             }
             try {
                 cancelConnectionWatchdog()
+                val streamAtConnectStart = stream
                 connectionWatchdog = watchdogExecutor.schedule({
                     connectionTimedOut = true
-                    try { stream?.stopStream() } catch (_: Exception) {}
-                    updateNotification("⚠️ Tiempo de conexión agotado (20 s). No llegó respuesta de YouTube. Revisa la URL RTMPS y la red; toca DETENER y vuelve a intentar.")
+                    // Report the timeout before attempting stopStream: library shutdown can block
+                    // while a TLS/RTMP socket is stuck, which would otherwise hide the diagnosis.
+                    updateNotification("⚠️ Sin respuesta RTMP después de 20 s. La app no confirmó conexión con YouTube. Revisa internet, servidor y clave; toca DETENER si sigue bloqueado.")
+                    Thread({
+                        try { streamAtConnectStart?.stopStream() } catch (_: Exception) {}
+                    }, "StreamTotal-StopAfterTimeout").apply { isDaemon = true }.start()
                 }, 20, TimeUnit.SECONDS)
                 stream!!.startStream(url)
             } catch (e: Exception) {
