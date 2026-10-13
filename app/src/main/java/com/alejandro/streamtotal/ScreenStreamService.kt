@@ -181,11 +181,19 @@ class ScreenStreamService : Service(), ConnectChecker {
                         try { streamAtConnectStart?.stopStream() } catch (_: Exception) {}
                     }, "StreamTotal-StopAfterTimeout").apply { isDaemon = true }.start()
                 }, 20, TimeUnit.SECONDS)
-                stream!!.startStream(url)
+                val streamToStart = stream
+                Thread({
+                    try {
+                        streamToStart?.startStream(url)
+                    } catch (e: Exception) {
+                        android.util.Log.e("StreamTotalRTMP", "startStream failed", e)
+                        updateNotification("⚠️ Falló el inicio RTMP: " + (e.message ?: e.javaClass.simpleName).take(100))
+                    }
+                }, "StreamTotal-StartRTMP").apply { isDaemon = true }.start()
             } catch (e: Exception) {
-                // A synchronous RTMP/encoder error must not destroy the screen-capture service
-                // or its floating controls. Keep the foreground service alive and report it.
-                updateNotification("⚠️ No se pudo iniciar RTMP · revisa servidor y clave")
+                // Keep the capture service alive and expose synchronous setup errors.
+                android.util.Log.e("StreamTotalRTMP", "RTMP setup failed", e)
+                updateNotification("⚠️ No se pudo preparar RTMP: " + (e.message ?: e.javaClass.simpleName).take(100))
             }
         } catch (e: SecurityException) {
             broadcastStatus("⚠️ Android bloqueó el servicio: " + (e.message ?: "permiso requerido"))
